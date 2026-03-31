@@ -5,6 +5,7 @@ import {
   formatCurrency,
   roundCurrencyInputToFiveIncrement
 } from '../../lib/utils/money';
+import { createId } from '../../lib/utils/id';
 import { isValidPin } from '../../lib/utils/pin';
 import type { SetupAccountInput } from '../../lib/types';
 import { ACCOUNT_LOGO_OPTIONS, presetLogoToFile } from './logoOptions';
@@ -13,6 +14,7 @@ import styles from './SetupFlow.module.css';
 const INITIAL_ACCOUNT_NAME = 'Checking';
 
 type AccountSetupForm = {
+  id: string;
   name: string;
   balance: string;
   balanceNote: string;
@@ -20,6 +22,18 @@ type AccountSetupForm = {
   preview: string;
   selectedPresetId: string | null;
 };
+
+function createSetupAccount(name: string): AccountSetupForm {
+  return {
+    id: createId(),
+    name,
+    balance: '0',
+    balanceNote: '',
+    logoFile: null,
+    preview: '',
+    selectedPresetId: null
+  };
+}
 
 function readPreview(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -37,18 +51,7 @@ export function SetupFlow() {
   const [confirmPin, setConfirmPin] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [accounts, setAccounts] = useState<AccountSetupForm[]>(
-    [
-      {
-        name: INITIAL_ACCOUNT_NAME,
-        balance: '0',
-        balanceNote: '',
-        logoFile: null,
-        preview: '',
-        selectedPresetId: null
-      }
-    ]
-  );
+  const [accounts, setAccounts] = useState<AccountSetupForm[]>([createSetupAccount(INITIAL_ACCOUNT_NAME)]);
 
   function handlePinContinue() {
     if (!isValidPin(pin)) {
@@ -85,6 +88,21 @@ export function SetupFlow() {
           ? { ...account, logoFile: file, preview, selectedPresetId: null }
           : account
       )
+    );
+  }
+
+  function handleAddAccount() {
+    setAccounts((currentAccounts) => [
+      ...currentAccounts,
+      createSetupAccount(`Account ${currentAccounts.length + 1}`)
+    ]);
+  }
+
+  function handleRemoveAccount(accountId: string) {
+    setAccounts((currentAccounts) =>
+      currentAccounts.length > 1
+        ? currentAccounts.filter((account) => account.id !== accountId)
+        : currentAccounts
     );
   }
 
@@ -137,12 +155,12 @@ export function SetupFlow() {
     setErrorMessage('');
 
     try {
-      const normalizedAccounts = accounts.map((account) => {
+      const normalizedAccounts = accounts.map((account, index) => {
         const roundedInput = roundCurrencyInputToFiveIncrement(account.balance, 'down');
         const trimmedName = account.name.trim();
 
         if (!trimmedName) {
-          throw new Error('Add a name for your first account.');
+          throw new Error(`Add a name for account ${index + 1}.`);
         }
 
         if (roundedInput === null) {
@@ -204,8 +222,8 @@ export function SetupFlow() {
         <h1 className={styles.title}>Make Budget yours.</h1>
         <p className={styles.subtitle}>
           Everything stays on this device. Set a PIN, create your first account, and pick its
-          logo from your built-in options or your own upload. You can add more accounts after
-          setup.
+          logo from your built-in options or your own upload. You can add more accounts here or
+          later from the home screen.
         </p>
 
         {step === 'pin' ? (
@@ -246,14 +264,40 @@ export function SetupFlow() {
           </div>
         ) : (
           <form className={styles.formStack} onSubmit={handleSetupSubmit}>
+            <div className={styles.accountSetupHeader}>
+              <p className={styles.accountSetupHint}>
+                Start with one account, then add any extra accounts you want before finishing.
+              </p>
+              <button
+                type="button"
+                className={styles.addAccountButton}
+                onClick={handleAddAccount}
+              >
+                Add another account
+              </button>
+            </div>
+
             <div className={styles.accountGrid}>
               {accounts.map((account, index) => (
-                <section key={index} className={styles.accountCard}>
+                <section key={account.id} className={styles.accountCard}>
                   <div className={styles.accountHeader}>
                     <div>
-                      <h2>{account.name.trim() || 'Your first account'}</h2>
-                      <p>Start with one account here, then add more from the home screen.</p>
+                      <h2>{account.name.trim() || `Account ${index + 1}`}</h2>
+                      <p>
+                        {index === 0
+                          ? 'Your first account for this budget.'
+                          : 'Another account you are adding during setup.'}
+                      </p>
                     </div>
+                    {accounts.length > 1 ? (
+                      <button
+                        type="button"
+                        className={styles.removeAccountButton}
+                        onClick={() => handleRemoveAccount(account.id)}
+                      >
+                        Remove
+                      </button>
+                    ) : null}
                     <div className={styles.logoPreview}>
                       {account.preview ? (
                         <img
@@ -282,7 +326,7 @@ export function SetupFlow() {
                           )
                         )
                       }
-                      placeholder="Checking"
+                      placeholder={index === 0 ? 'Checking' : `Account ${index + 1}`}
                     />
                   </label>
 

@@ -40,6 +40,27 @@
   margin-top: 1.5rem;
 }
 
+.accountSetupHeader {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.accountSetupHint {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.addAccountButton {
+  justify-self: start;
+  min-height: 3rem;
+  border-radius: 18px;
+  padding: 0.9rem 1.1rem;
+  background: rgba(56, 189, 248, 0.14);
+  color: var(--text-primary);
+  border: 1px solid rgba(125, 211, 252, 0.28);
+  font-weight: 700;
+}
+
 .accountGrid {
   display: grid;
   gap: 1rem;
@@ -60,6 +81,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .accountHeader h2 {
@@ -71,6 +93,16 @@
   margin: 0.25rem 0 0;
   color: var(--text-secondary);
   font-size: 0.9rem;
+}
+
+.removeAccountButton {
+  min-height: 2.6rem;
+  border-radius: 14px;
+  padding: 0.7rem 0.95rem;
+  background: rgba(248, 113, 113, 0.12);
+  color: #fca5a5;
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
 .logoPreview {
@@ -211,6 +243,11 @@
 @media (min-width: 768px) {
   .card {
     padding: 2.2rem;
+  }
+
+  .accountSetupHeader {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
   }
 
   .accountGrid {

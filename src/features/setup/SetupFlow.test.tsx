@@ -23,6 +23,7 @@ describe('SetupFlow', () => {
 
     expect(screen.getByText(/checking/i)).toBeInTheDocument();
     expect(screen.getAllByLabelText(/starting balance/i)).toHaveLength(1);
+    expect(screen.getByRole('button', { name: /add another account/i })).toBeInTheDocument();
     expect(screen.getByText(/finish setup/i)).toBeInTheDocument();
   });
 
@@ -60,5 +61,20 @@ describe('SetupFlow', () => {
     await user.type(accountNameInput, 'Travel fund');
 
     expect(screen.getByText(/travel fund/i)).toBeInTheDocument();
+  });
+
+  it('lets you add another account during setup', async () => {
+    const user = userEvent.setup();
+
+    render(<SetupFlow />);
+
+    await user.type(screen.getByLabelText(/create 4-digit pin/i), '1234');
+    await user.type(screen.getByLabelText(/confirm pin/i), '1234');
+    await user.click(screen.getByRole('button', { name: /continue to account setup/i }));
+    await user.click(screen.getByRole('button', { name: /add another account/i }));
+
+    expect(screen.getAllByLabelText(/account name/i)).toHaveLength(2);
+    expect(screen.getAllByLabelText(/starting balance/i)).toHaveLength(2);
+    expect(screen.getByDisplayValue('Account 2')).toBeInTheDocument();
   });
 });
