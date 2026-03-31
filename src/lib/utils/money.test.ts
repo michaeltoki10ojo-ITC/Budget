@@ -5,6 +5,8 @@ import {
   formatCurrency,
   isFiveIncrement,
   parseCurrencyInputToCents,
+  roundCurrencyInputToFiveIncrement,
+  roundToFiveIncrement,
   sumCents
 } from './money';
 
@@ -19,6 +21,26 @@ describe('money utilities', () => {
     expect(isFiveIncrement(1500)).toBe(true);
     expect(isFiveIncrement(1250)).toBe(false);
     expect(() => ensureFiveIncrement(1250)).toThrow('$5 increments');
+  });
+
+  it('rounds incoming amounts down and outgoing amounts up', () => {
+    expect(roundToFiveIncrement(2399, 'down')).toBe(2000);
+    expect(roundToFiveIncrement(2399, 'up')).toBe(2500);
+    expect(roundToFiveIncrement(2500, 'down')).toBe(2500);
+  });
+
+  it('rounds parsed currency inputs to five dollar increments', () => {
+    expect(roundCurrencyInputToFiveIncrement('23.99', 'down')).toEqual({
+      originalCents: 2399,
+      roundedCents: 2000,
+      didRound: true
+    });
+    expect(roundCurrencyInputToFiveIncrement('21', 'up')).toEqual({
+      originalCents: 2100,
+      roundedCents: 2500,
+      didRound: true
+    });
+    expect(roundCurrencyInputToFiveIncrement('', 'up')).toBeNull();
   });
 
   it('formats and sums cents', () => {

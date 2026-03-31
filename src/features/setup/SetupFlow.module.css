@@ -115,6 +115,15 @@
   color: var(--text-secondary);
 }
 
+.helperText {
+  color: var(--text-secondary);
+}
+
+.roundedNote {
+  color: var(--surface-accent);
+  font-weight: 600;
+}
+
 .logoOptionGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -180,8 +189,9 @@
 }
 
 .primaryButton {
-  background: var(--surface-dark);
-  color: var(--text-inverse);
+  background: var(--cta-fill);
+  color: var(--cta-text);
+  box-shadow: var(--cta-shadow);
 }
 
 .secondaryButton {

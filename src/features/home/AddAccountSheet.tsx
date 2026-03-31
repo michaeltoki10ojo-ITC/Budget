@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from 'react';
 import type { AddAccountInput } from '../../lib/types';
 import {
-  ensureFiveIncrement,
-  isFiveIncrement,
-  parseCurrencyInputToCents
+  centsToInputValue,
+  formatCurrency,
+  roundCurrencyInputToFiveIncrement
 } from '../../lib/utils/money';
 import {
   ACCOUNT_LOGO_OPTIONS,
@@ -50,6 +50,7 @@ export function AddAccountSheet({
 }: AddAccountSheetProps) {
   const [name, setName] = useState('');
   const [balance, setBalance] = useState('0');
+  const [balanceNote, setBalanceNote] = useState('');
   const [logoState, setLogoState] = useState<PreviewState>(defaultPreviewState);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -86,35 +87,53 @@ export function AddAccountSheet({
     setErrorMessage('');
 
     try {
-      const balanceCents = parseCurrencyInputToCents(balance);
+      const roundedInput = roundCurrencyInputToFiveIncrement(balance, 'down');
 
       if (!name.trim()) {
         throw new Error('Add an account name.');
       }
 
-      if (balanceCents === null) {
+      if (!roundedInput) {
         throw new Error('Add a starting balance.');
       }
-
-      ensureFiveIncrement(balanceCents);
 
       if (!logoState.logoFile) {
         throw new Error('Pick a logo or upload your own.');
       }
 
+      setBalance(centsToInputValue(roundedInput.roundedCents, 0));
+      setBalanceNote(
+        roundedInput.didRound ? `Rounded to ${formatCurrency(roundedInput.roundedCents)}.` : ''
+      );
+
       await onSubmit({
         name: name.trim(),
-        balanceCents,
+        balanceCents: roundedInput.roundedCents,
         logoFile: logoState.logoFile
       });
 
       setName('');
       setBalance('0');
+      setBalanceNote('');
       setLogoState(defaultPreviewState());
       onClose();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Unable to create account.');
     }
+  }
+
+  function applyRoundedBalance() {
+    const roundedInput = roundCurrencyInputToFiveIncrement(balance, 'down');
+
+    if (!roundedInput) {
+      setBalanceNote('');
+      return;
+    }
+
+    setBalance(centsToInputValue(roundedInput.roundedCents, 0));
+    setBalanceNote(
+      roundedInput.didRound ? `Rounded to ${formatCurrency(roundedInput.roundedCents)}.` : ''
+    );
   }
 
   return (
@@ -145,15 +164,17 @@ export function AddAccountSheet({
             <input
               type="number"
               inputMode="decimal"
-              step={5}
+              step="0.01"
               value={balance}
-              onChange={(event) => setBalance(event.target.value)}
+              onChange={(event) => {
+                setBalance(event.target.value);
+                setBalanceNote('');
+              }}
+              onBlur={applyRoundedBalance}
               placeholder="0"
             />
-            <small className={styles.helperText}>
-              {isFiveIncrement(parseCurrencyInputToCents(balance) ?? 0)
-                ? 'Balance is valid in $5 steps.'
-                : 'Balance must stay in $5 increments.'}
+            <small className={balanceNote ? styles.roundedNote : styles.helperText}>
+              {balanceNote || 'Incoming balances round down to the nearest $5.'}
             </small>
           </label>
         </div>

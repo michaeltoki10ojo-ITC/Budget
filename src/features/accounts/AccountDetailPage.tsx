@@ -3,7 +3,11 @@ import { motion } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useBudgetApp } from '../../app/state/BudgetAppContext';
 import { formatDate, todayInputValue } from '../../lib/utils/date';
-import { ensureFiveIncrement, formatCurrency, parseCurrencyInputToCents } from '../../lib/utils/money';
+import {
+  centsToInputValue,
+  formatCurrency,
+  roundCurrencyInputToFiveIncrement
+} from '../../lib/utils/money';
 import styles from './AccountDetailPage.module.css';
 
 const QUICK_ACTIONS = [
@@ -35,6 +39,7 @@ export function AccountDetailPage() {
   const [name, setName] = useState('');
   const [dateISO, setDateISO] = useState(todayInputValue());
   const [amount, setAmount] = useState('5');
+  const [amountNote, setAmountNote] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -54,32 +59,50 @@ export function AccountDetailPage() {
   const logo = assets[activeAccount.logoAssetId];
   const accountExpenses = expenses.filter((expense) => expense.accountId === activeAccount.id);
 
+  function applyRoundedExpenseAmount() {
+    const roundedInput = roundCurrencyInputToFiveIncrement(amount, 'up');
+
+    if (!roundedInput) {
+      setAmountNote('');
+      return;
+    }
+
+    setAmount(centsToInputValue(roundedInput.roundedCents, 0));
+    setAmountNote(
+      roundedInput.didRound ? `Rounded to ${formatCurrency(roundedInput.roundedCents)}.` : ''
+    );
+  }
+
   async function handleExpenseSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErrorMessage('');
 
     try {
-      const amountCents = parseCurrencyInputToCents(amount);
+      const roundedInput = roundCurrencyInputToFiveIncrement(amount, 'up');
 
       if (!name.trim()) {
         throw new Error('Add an expense name.');
       }
 
-      if (amountCents === null || amountCents <= 0) {
+      if (!roundedInput || roundedInput.roundedCents <= 0) {
         throw new Error('Add an expense amount.');
       }
 
-      ensureFiveIncrement(amountCents);
+      setAmount(centsToInputValue(roundedInput.roundedCents, 0));
+      setAmountNote(
+        roundedInput.didRound ? `Rounded to ${formatCurrency(roundedInput.roundedCents)}.` : ''
+      );
 
       setIsSubmitting(true);
       await addExpense({
         accountId: activeAccount.id,
         name: name.trim(),
         dateISO,
-        amountCents
+        amountCents: roundedInput.roundedCents
       });
       setName('');
       setAmount('5');
+      setAmountNote('');
       setDateISO(todayInputValue());
     } catch (error) {
       setErrorMessage(
@@ -167,12 +190,19 @@ export function AccountDetailPage() {
             <input
               type="number"
               inputMode="decimal"
-              step={5}
-              min={5}
+              step="0.01"
+              min="0.01"
               value={amount}
-              onChange={(event) => setAmount(event.target.value)}
+              onChange={(event) => {
+                setAmount(event.target.value);
+                setAmountNote('');
+              }}
+              onBlur={applyRoundedExpenseAmount}
               placeholder="5"
             />
+            <small className={amountNote ? styles.roundedNote : styles.helperText}>
+              {amountNote || 'Outgoing amounts round up to the nearest $5.'}
+            </small>
           </label>
         </div>
 

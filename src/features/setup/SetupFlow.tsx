@@ -1,6 +1,10 @@
 import { useState, type FormEvent } from 'react';
 import { useBudgetApp } from '../../app/state/BudgetAppContext';
-import { ensureFiveIncrement, isFiveIncrement, parseCurrencyInputToCents } from '../../lib/utils/money';
+import {
+  centsToInputValue,
+  formatCurrency,
+  roundCurrencyInputToFiveIncrement
+} from '../../lib/utils/money';
 import { isValidPin } from '../../lib/utils/pin';
 import type { SetupAccountInput } from '../../lib/types';
 import { ACCOUNT_LOGO_OPTIONS, presetLogoToFile } from './logoOptions';
@@ -11,6 +15,7 @@ const STARTER_ACCOUNTS = ['Checking', 'Cash', 'Savings'];
 type AccountSetupForm = {
   name: string;
   balance: string;
+  balanceNote: string;
   logoFile: File | null;
   preview: string;
   selectedPresetId: string | null;
@@ -36,6 +41,7 @@ export function SetupFlow() {
     STARTER_ACCOUNTS.map((name) => ({
       name,
       balance: '0',
+      balanceNote: '',
       logoFile: null,
       preview: '',
       selectedPresetId: null
@@ -80,6 +86,33 @@ export function SetupFlow() {
     );
   }
 
+  function applyRoundedBalance(index: number) {
+    setAccounts((currentAccounts) =>
+      currentAccounts.map((account, currentIndex) => {
+        if (currentIndex !== index) {
+          return account;
+        }
+
+        const roundedInput = roundCurrencyInputToFiveIncrement(account.balance, 'down');
+
+        if (!roundedInput) {
+          return {
+            ...account,
+            balanceNote: ''
+          };
+        }
+
+        return {
+          ...account,
+          balance: centsToInputValue(roundedInput.roundedCents, 0),
+          balanceNote: roundedInput.didRound
+            ? `Rounded to ${formatCurrency(roundedInput.roundedCents)}.`
+            : ''
+        };
+      })
+    );
+  }
+
   async function handlePresetSelect(index: number, preset: (typeof ACCOUNT_LOGO_OPTIONS)[number]) {
     const logoFile = await presetLogoToFile(preset);
 
@@ -102,23 +135,45 @@ export function SetupFlow() {
     setErrorMessage('');
 
     try {
-      const payload: SetupAccountInput[] = accounts.map((account) => {
-        const balanceCents = parseCurrencyInputToCents(account.balance);
+      const normalizedAccounts = accounts.map((account) => {
+        const roundedInput = roundCurrencyInputToFiveIncrement(account.balance, 'down');
 
-        if (balanceCents === null) {
+        if (roundedInput === null) {
           throw new Error(`Enter a starting balance for ${account.name}.`);
         }
-
-        ensureFiveIncrement(balanceCents);
 
         if (!account.logoFile) {
           throw new Error(`Upload a logo for ${account.name}.`);
         }
 
         return {
+          roundedCents: roundedInput.roundedCents,
+          displayValue: centsToInputValue(roundedInput.roundedCents, 0),
+          note: roundedInput.didRound
+            ? `Rounded to ${formatCurrency(roundedInput.roundedCents)}.`
+            : ''
+        };
+      });
+
+      setAccounts((currentAccounts) =>
+        currentAccounts.map((account, index) => ({
+          ...account,
+          balance: normalizedAccounts[index].displayValue,
+          balanceNote: normalizedAccounts[index].note
+        }))
+      );
+
+      const payload: SetupAccountInput[] = accounts.map((account, index) => {
+        const logoFile = account.logoFile;
+
+        if (!logoFile) {
+          throw new Error(`Upload a logo for ${account.name}.`);
+        }
+
+        return {
           name: account.name,
-          balanceCents,
-          logoFile: account.logoFile
+          balanceCents: normalizedAccounts[index].roundedCents,
+          logoFile
         };
       });
 
@@ -187,7 +242,7 @@ export function SetupFlow() {
                   <div className={styles.accountHeader}>
                     <div>
                       <h2>{account.name}</h2>
-                      <p>{isFiveIncrement(parseCurrencyInputToCents(account.balance) ?? 0) ? 'Balance in $5 steps' : 'Needs a $5 increment'}</p>
+                      <p>Starting balances round down to the nearest $5.</p>
                     </div>
                     <div className={styles.logoPreview}>
                       {account.preview ? (
@@ -203,19 +258,31 @@ export function SetupFlow() {
                     <input
                       type="number"
                       inputMode="decimal"
-                      step={5}
+                      step="0.01"
                       value={account.balance}
                       onChange={(event) =>
                         setAccounts((currentAccounts) =>
                           currentAccounts.map((currentAccount, currentIndex) =>
                             currentIndex === index
-                              ? { ...currentAccount, balance: event.target.value }
+                              ? {
+                                  ...currentAccount,
+                                  balance: event.target.value,
+                                  balanceNote: ''
+                                }
                               : currentAccount
                           )
                         )
                       }
+                      onBlur={() => applyRoundedBalance(index)}
                       placeholder="0"
                     />
+                    <small
+                      className={
+                        account.balanceNote ? styles.roundedNote : styles.helperText
+                      }
+                    >
+                      {account.balanceNote || 'We round incoming balances down to $5 steps.'}
+                    </small>
                   </label>
 
                   <div className={styles.logoSection}>

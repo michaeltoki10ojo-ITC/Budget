@@ -69,4 +69,25 @@ describe('AccountDetailPage', () => {
 
     expect(screen.getByLabelText(/expense name/i)).toHaveValue('Groceries');
   });
+
+  it('rounds expense amounts up to the nearest five dollars', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={['/account/checking']}>
+        <Routes>
+          <Route path="/account/:accountId" element={<AccountDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    const amountInput = screen.getByLabelText(/amount/i);
+
+    await user.clear(amountInput);
+    await user.type(amountInput, '21');
+    await user.tab();
+
+    expect(amountInput).toHaveValue(25);
+    expect(screen.getByText('Rounded to $25.00.')).toBeInTheDocument();
+  });
 });

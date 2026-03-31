@@ -87,8 +87,9 @@
 .submitButton {
   min-height: 3.2rem;
   padding: 0.9rem 1.1rem;
-  background: var(--surface-dark);
-  color: var(--text-inverse);
+  background: var(--cta-fill);
+  color: var(--cta-text);
+  box-shadow: var(--cta-shadow);
 }
 
 @media (min-width: 768px) {
