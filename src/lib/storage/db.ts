@@ -1,5 +1,5 @@
 import { DBSchema, deleteDB, openDB } from 'idb';
-import type { Account, AssetRecord, Expense, WantItem } from '../types';
+import type { Account, AssetRecord, Expense, WishlistItem } from '../types';
 
 interface BudgetDbSchema extends DBSchema {
   accounts: {
@@ -16,7 +16,14 @@ interface BudgetDbSchema extends DBSchema {
   };
   wants: {
     key: string;
-    value: WantItem;
+    value: WishlistItem;
+    indexes: {
+      'by-createdAt': string;
+    };
+  };
+  wishlist: {
+    key: string;
+    value: WishlistItem;
     indexes: {
       'by-createdAt': string;
     };
@@ -28,13 +35,13 @@ interface BudgetDbSchema extends DBSchema {
 }
 
 const DB_NAME = 'budget-pwa-v1';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let dbPromise: Promise<import('idb').IDBPDatabase<BudgetDbSchema>> | null = null;
 
 export function getBudgetDb() {
   dbPromise ??= openDB<BudgetDbSchema>(DB_NAME, DB_VERSION, {
-    upgrade(db) {
+    async upgrade(db, oldVersion, _newVersion, transaction) {
       if (!db.objectStoreNames.contains('accounts')) {
         db.createObjectStore('accounts', { keyPath: 'id' });
       }
@@ -46,8 +53,21 @@ export function getBudgetDb() {
       }
 
       if (!db.objectStoreNames.contains('wants')) {
-        const wantStore = db.createObjectStore('wants', { keyPath: 'id' });
-        wantStore.createIndex('by-createdAt', 'createdAt');
+        const legacyWishlistStore = db.createObjectStore('wants', { keyPath: 'id' });
+        legacyWishlistStore.createIndex('by-createdAt', 'createdAt');
+      }
+
+      if (!db.objectStoreNames.contains('wishlist')) {
+        const wishlistStore = db.createObjectStore('wishlist', { keyPath: 'id' });
+        wishlistStore.createIndex('by-createdAt', 'createdAt');
+      }
+
+      if (oldVersion < 2 && db.objectStoreNames.contains('wants')) {
+        const legacyWishlistItems = await transaction.objectStore('wants').getAll();
+
+        for (const wishlistItem of legacyWishlistItems) {
+          await transaction.objectStore('wishlist').put(wishlistItem);
+        }
       }
 
       if (!db.objectStoreNames.contains('assets')) {

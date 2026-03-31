@@ -3,12 +3,12 @@ import type {
   Account,
   AddAccountInput,
   AddExpenseInput,
-  AddWantInput,
+  AddWishlistInput,
   AppSettings,
   AssetRecord,
   Expense,
   SetupAccountInput,
-  WantItem
+  WishlistItem
 } from '../../lib/types';
 import {
   accountsRepo,
@@ -16,7 +16,7 @@ import {
   clearAllLocalData,
   expensesRepo,
   settingsRepo,
-  wantsRepo
+  wishlistRepo
 } from '../../lib/storage/repositories';
 import { resizeImageToDataUrl } from '../../lib/utils/image';
 import { createId } from '../../lib/utils/id';
@@ -30,7 +30,7 @@ type BudgetAppContextValue = {
   settings: AppSettings | null;
   accounts: Account[];
   expenses: Expense[];
-  wants: WantItem[];
+  wishlistItems: WishlistItem[];
   assets: Record<string, AssetRecord>;
   completeSetup: (pin: string, accountInputs: SetupAccountInput[]) => Promise<void>;
   addAccount: (input: AddAccountInput) => Promise<void>;
@@ -39,25 +39,25 @@ type BudgetAppContextValue = {
   quickAdjustBalance: (accountId: string, deltaCents: number) => Promise<void>;
   addExpense: (input: AddExpenseInput) => Promise<void>;
   deleteExpense: (expenseId: string) => Promise<void>;
-  addWant: (input: AddWantInput) => Promise<void>;
-  deleteWant: (wantId: string) => Promise<void>;
+  addWishlistItem: (input: AddWishlistInput) => Promise<void>;
+  deleteWishlistItem: (wishlistItemId: string) => Promise<void>;
   resetApp: () => Promise<void>;
 };
 
 const BudgetAppContext = createContext<BudgetAppContextValue | undefined>(undefined);
 
 async function loadAllData() {
-  const [accounts, expenses, wants, assets] = await Promise.all([
+  const [accounts, expenses, wishlistItems, assets] = await Promise.all([
     accountsRepo.list(),
     expensesRepo.listAll(),
-    wantsRepo.list(),
+    wishlistRepo.list(),
     assetsRepo.listAll()
   ]);
 
   return {
     accounts,
     expenses,
-    wants,
+    wishlistItems,
     assets: Object.fromEntries(assets.map((asset) => [asset.id, asset]))
   };
 }
@@ -67,7 +67,7 @@ export function BudgetAppProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [wants, setWants] = useState<WantItem[]>([]);
+  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
   const [assets, setAssets] = useState<Record<string, AssetRecord>>({});
 
   async function saveAccountWithLogo(
@@ -103,7 +103,7 @@ export function BudgetAppProvider({ children }: { children: React.ReactNode }) {
         setSettings(null);
         setAccounts([]);
         setExpenses([]);
-        setWants([]);
+        setWishlistItems([]);
         setAssets({});
         setBootStatus('setup');
         return;
@@ -113,7 +113,7 @@ export function BudgetAppProvider({ children }: { children: React.ReactNode }) {
       setSettings(nextSettings);
       setAccounts(data.accounts);
       setExpenses(data.expenses);
-      setWants(data.wants);
+      setWishlistItems(data.wishlistItems);
       setAssets(data.assets);
       setBootStatus('locked');
     }
@@ -146,7 +146,7 @@ export function BudgetAppProvider({ children }: { children: React.ReactNode }) {
     setSettings(nextSettings);
     setAccounts(seededAccounts);
     setExpenses([]);
-    setWants([]);
+    setWishlistItems([]);
     setAssets(nextAssets);
     setBootStatus('locked');
   }
@@ -176,7 +176,7 @@ export function BudgetAppProvider({ children }: { children: React.ReactNode }) {
     const data = await loadAllData();
     setAccounts(data.accounts);
     setExpenses(data.expenses);
-    setWants(data.wants);
+    setWishlistItems(data.wishlistItems);
     setAssets(data.assets);
     setBootStatus('ready');
     return true;
@@ -240,10 +240,10 @@ export function BudgetAppProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
-  async function addWant(input: AddWantInput) {
+  async function addWishlistItem(input: AddWishlistInput) {
     const resizedImage = await resizeImageToDataUrl(input.imageFile);
     const savedAsset = await assetsRepo.save(resizedImage);
-    const want = await wantsRepo.create({
+    const wishlistItem = await wishlistRepo.create({
       name: input.name,
       priceCents: input.priceCents,
       url: input.url,
@@ -254,27 +254,29 @@ export function BudgetAppProvider({ children }: { children: React.ReactNode }) {
       ...currentAssets,
       [savedAsset.id]: savedAsset
     }));
-    setWants((currentWants) =>
-      [want, ...currentWants].sort((left, right) =>
+    setWishlistItems((currentWishlistItems) =>
+      [wishlistItem, ...currentWishlistItems].sort((left, right) =>
         right.createdAt.localeCompare(left.createdAt)
       )
     );
   }
 
-  async function deleteWant(wantId: string) {
-    const want = wants.find((entry) => entry.id === wantId);
+  async function deleteWishlistItem(wishlistItemId: string) {
+    const wishlistItem = wishlistItems.find((entry) => entry.id === wishlistItemId);
 
-    if (!want) {
+    if (!wishlistItem) {
       return;
     }
 
-    await wantsRepo.delete(wantId);
-    await assetsRepo.delete(want.imageAssetId);
+    await wishlistRepo.delete(wishlistItemId);
+    await assetsRepo.delete(wishlistItem.imageAssetId);
 
-    setWants((currentWants) => currentWants.filter((entry) => entry.id !== wantId));
+    setWishlistItems((currentWishlistItems) =>
+      currentWishlistItems.filter((entry) => entry.id !== wishlistItemId)
+    );
     setAssets((currentAssets) => {
       const nextAssets = { ...currentAssets };
-      delete nextAssets[want.imageAssetId];
+      delete nextAssets[wishlistItem.imageAssetId];
       return nextAssets;
     });
   }
@@ -284,7 +286,7 @@ export function BudgetAppProvider({ children }: { children: React.ReactNode }) {
     setSettings(null);
     setAccounts([]);
     setExpenses([]);
-    setWants([]);
+    setWishlistItems([]);
     setAssets({});
     setBootStatus('setup');
     window.location.hash = '#/';
@@ -297,7 +299,7 @@ export function BudgetAppProvider({ children }: { children: React.ReactNode }) {
         settings,
         accounts,
         expenses,
-        wants,
+        wishlistItems,
         assets,
         completeSetup,
         addAccount,
@@ -306,8 +308,8 @@ export function BudgetAppProvider({ children }: { children: React.ReactNode }) {
         quickAdjustBalance,
         addExpense,
         deleteExpense,
-        addWant,
-        deleteWant,
+        addWishlistItem,
+        deleteWishlistItem,
         resetApp
       }}
     >

@@ -32,7 +32,7 @@ export function LockScreen() {
 
   async function handleReset() {
     const confirmed = window.confirm(
-      'Reset the app and clear all local data? This removes your accounts, expenses, wants, and PIN.'
+      'Reset the app and clear all local data? This removes your accounts, expenses, wishlist items, and PIN.'
     );
 
     if (!confirmed) {

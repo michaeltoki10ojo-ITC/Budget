@@ -32,12 +32,12 @@ export function AppShell() {
           Home
         </NavLink>
         <NavLink
-          to="/wants"
+          to="/wishlist"
           className={({ isActive }) =>
             isActive ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink
           }
         >
-          Wants
+          Wishlist
         </NavLink>
       </nav>
     </div>

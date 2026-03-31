@@ -1,13 +1,13 @@
 import { useState, type FormEvent } from 'react';
-import type { AddWantInput } from '../../lib/types';
+import type { AddWishlistInput } from '../../lib/types';
 import { parseCurrencyInputToCents } from '../../lib/utils/money';
 import styles from './WantFormSheet.module.css';
 
-type WantFormSheetProps = {
+type WishlistFormSheetProps = {
   isOpen: boolean;
   isSubmitting: boolean;
   onClose: () => void;
-  onSubmit: (input: AddWantInput) => Promise<void>;
+  onSubmit: (input: AddWishlistInput) => Promise<void>;
 };
 
 function readPreview(file: File): Promise<string> {
@@ -20,16 +20,17 @@ function readPreview(file: File): Promise<string> {
 }
 
 function normalizeUrl(value: string): string {
-  const candidate = value.startsWith('http://') || value.startsWith('https://') ? value : `https://${value}`;
+  const candidate =
+    value.startsWith('http://') || value.startsWith('https://') ? value : `https://${value}`;
   return new URL(candidate).toString();
 }
 
-export function WantFormSheet({
+export function WishlistFormSheet({
   isOpen,
   isSubmitting,
   onClose,
   onSubmit
-}: WantFormSheetProps) {
+}: WishlistFormSheetProps) {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [url, setUrl] = useState('');
@@ -60,7 +61,7 @@ export function WantFormSheet({
       const priceCents = parseCurrencyInputToCents(price);
 
       if (!name.trim()) {
-        throw new Error('Add a want item name.');
+        throw new Error('Add a wishlist item name.');
       }
 
       if (priceCents === null || priceCents <= 0) {
@@ -68,7 +69,7 @@ export function WantFormSheet({
       }
 
       if (!imageFile) {
-        throw new Error('Upload an image for this want.');
+        throw new Error('Upload an image for this wishlist item.');
       }
 
       await onSubmit({
@@ -85,7 +86,7 @@ export function WantFormSheet({
       setPreview('');
       onClose();
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Unable to save want item.');
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to save wishlist item.');
     }
   }
 
@@ -94,8 +95,8 @@ export function WantFormSheet({
       <form className={styles.sheet} onSubmit={handleSubmit}>
         <div className={styles.header}>
           <div>
-            <p className={styles.eyebrow}>New want</p>
-            <h2>Add something you’re saving for.</h2>
+            <p className={styles.eyebrow}>New wishlist item</p>
+            <h2>Add something you're saving for.</h2>
           </div>
           <button type="button" className={styles.closeButton} onClick={onClose}>
             Close
@@ -105,7 +106,11 @@ export function WantFormSheet({
         <div className={styles.formGrid}>
           <label>
             Item name
-            <input value={name} onChange={(event) => setName(event.target.value)} placeholder="New headphones" />
+            <input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="New headphones"
+            />
           </label>
 
           <label>
@@ -142,13 +147,17 @@ export function WantFormSheet({
         </div>
 
         <div className={styles.previewCard}>
-          {preview ? <img src={preview} alt="Want preview" /> : <span>Image preview appears here</span>}
+          {preview ? (
+            <img src={preview} alt="Wishlist preview" />
+          ) : (
+            <span>Image preview appears here</span>
+          )}
         </div>
 
         {errorMessage ? <p className={styles.error}>{errorMessage}</p> : null}
 
         <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
-          {isSubmitting ? 'Saving want...' : 'Save want'}
+          {isSubmitting ? 'Saving item...' : 'Save item'}
         </button>
       </form>
     </div>

@@ -1,16 +1,16 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
-import { WantsPage } from './WantsPage';
+import { WishlistPage } from './WantsPage';
 
-const addWant = vi.fn();
-const deleteWant = vi.fn();
+const addWishlistItem = vi.fn();
+const deleteWishlistItem = vi.fn();
 
 vi.mock('../../app/state/BudgetAppContext', () => ({
   useBudgetApp: () => ({
-    wants: [
+    wishlistItems: [
       {
-        id: 'want-1',
+        id: 'wishlist-item-1',
         name: 'Headphones',
         priceCents: 12999,
         imageAssetId: 'asset-1',
@@ -28,21 +28,22 @@ vi.mock('../../app/state/BudgetAppContext', () => ({
         createdAt: '2026-03-30T00:00:00.000Z'
       }
     },
-    addWant,
-    deleteWant
+    addWishlistItem,
+    deleteWishlistItem
   })
 }));
 
-describe('WantsPage', () => {
+describe('WishlistPage', () => {
   it('shows the running total and opens the create form', async () => {
     const user = userEvent.setup();
 
-    render(<WantsPage />);
+    render(<WishlistPage />);
 
+    expect(screen.getByText(/wishlist total/i)).toBeInTheDocument();
     expect(screen.getAllByText('$129.99')).toHaveLength(2);
 
     await user.click(screen.getByRole('button', { name: '+' }));
 
-    expect(screen.getByText(/add something you’re saving for/i)).toBeInTheDocument();
+    expect(screen.getByText(/add something you're saving for/i)).toBeInTheDocument();
   });
 });

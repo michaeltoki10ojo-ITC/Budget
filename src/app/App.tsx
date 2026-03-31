@@ -6,7 +6,7 @@ import { LockScreen } from '../features/lock/LockScreen';
 import { AppShell } from './shell/AppShell';
 import { HomePage } from '../features/home/HomePage';
 import { AccountDetailPage } from '../features/accounts/AccountDetailPage';
-import { WantsPage } from '../features/wants/WantsPage';
+import { WishlistPage } from '../features/wants/WantsPage';
 import styles from './App.module.css';
 
 function SplashScreen() {
@@ -38,7 +38,8 @@ function AppContent() {
           <Route element={<AppShell />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/account/:accountId" element={<AccountDetailPage />} />
-            <Route path="/wants" element={<WantsPage />} />
+            <Route path="/wishlist" element={<WishlistPage />} />
+            <Route path="/wants" element={<Navigate to="/wishlist" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

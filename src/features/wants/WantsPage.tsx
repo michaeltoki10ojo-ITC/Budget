@@ -1,21 +1,23 @@
 import { useState } from 'react';
 import { useBudgetApp } from '../../app/state/BudgetAppContext';
 import { formatCurrency, sumCents } from '../../lib/utils/money';
-import type { AddWantInput } from '../../lib/types';
-import { WantFormSheet } from './WantFormSheet';
+import type { AddWishlistInput } from '../../lib/types';
+import { WishlistFormSheet } from './WantFormSheet';
 import styles from './WantsPage.module.css';
 
-export function WantsPage() {
-  const { wants, assets, addWant, deleteWant } = useBudgetApp();
+export function WishlistPage() {
+  const { wishlistItems, assets, addWishlistItem, deleteWishlistItem } = useBudgetApp();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const totalWanted = sumCents(wants.map((want) => want.priceCents));
+  const totalWishlistValue = sumCents(
+    wishlistItems.map((wishlistItem) => wishlistItem.priceCents)
+  );
 
-  async function handleAddWant(input: AddWantInput) {
+  async function handleAddWishlistItem(input: AddWishlistInput) {
     setIsSubmitting(true);
 
     try {
-      await addWant(input);
+      await addWishlistItem(input);
     } finally {
       setIsSubmitting(false);
     }
@@ -25,39 +27,39 @@ export function WantsPage() {
     <>
       <div className={styles.page}>
         <section className={styles.totalCard}>
-          <p className={styles.totalLabel}>Running total</p>
-          <h2 className={styles.totalValue}>{formatCurrency(totalWanted)}</h2>
+          <p className={styles.totalLabel}>Wishlist total</p>
+          <h2 className={styles.totalValue}>{formatCurrency(totalWishlistValue)}</h2>
           <p className={styles.totalCaption}>
-            Save the things you want to buy later, complete with photo and link.
+            Save the things you want to buy later, complete with a photo and link.
           </p>
         </section>
 
         <section className={styles.wantList}>
-          {wants.length === 0 ? (
+          {wishlistItems.length === 0 ? (
             <div className={styles.emptyState}>
-              <h3>No wants yet</h3>
-              <p>Tap the plus button to create your first wish-list item.</p>
+              <h3>Your wishlist is empty</h3>
+              <p>Tap the plus button to save your first wishlist item.</p>
             </div>
           ) : (
-            wants.map((want) => {
-              const image = assets[want.imageAssetId];
+            wishlistItems.map((wishlistItem) => {
+              const image = assets[wishlistItem.imageAssetId];
 
               return (
-                <article key={want.id} className={styles.wantCard}>
+                <article key={wishlistItem.id} className={styles.wantCard}>
                   <div className={styles.imageFrame}>
                     {image ? (
-                      <img src={image.dataUrl} alt={want.name} />
+                      <img src={image.dataUrl} alt={wishlistItem.name} />
                     ) : (
-                      <span>{want.name.slice(0, 1)}</span>
+                      <span>{wishlistItem.name.slice(0, 1)}</span>
                     )}
                   </div>
 
                   <div className={styles.wantMeta}>
-                    <h3>{want.name}</h3>
-                    <p>{formatCurrency(want.priceCents)}</p>
+                    <h3>{wishlistItem.name}</h3>
+                    <p>{formatCurrency(wishlistItem.priceCents)}</p>
                     <div className={styles.actions}>
                       <a
-                        href={want.url}
+                        href={wishlistItem.url}
                         target="_blank"
                         rel="noreferrer"
                         className={styles.linkButton}
@@ -68,8 +70,12 @@ export function WantsPage() {
                         type="button"
                         className={styles.deleteButton}
                         onClick={() => {
-                          if (window.confirm(`Delete "${want.name}" from your wants list?`)) {
-                            void deleteWant(want.id);
+                          if (
+                            window.confirm(
+                              `Delete "${wishlistItem.name}" from your wishlist?`
+                            )
+                          ) {
+                            void deleteWishlistItem(wishlistItem.id);
                           }
                         }}
                       >
@@ -88,7 +94,7 @@ export function WantsPage() {
         </button>
       </div>
 
-      <WantFormSheet
+      <WishlistFormSheet
         isOpen={isSheetOpen}
         isSubmitting={isSubmitting}
         onClose={() => {
@@ -96,7 +102,7 @@ export function WantsPage() {
             setIsSheetOpen(false);
           }
         }}
-        onSubmit={handleAddWant}
+        onSubmit={handleAddWishlistItem}
       />
     </>
   );

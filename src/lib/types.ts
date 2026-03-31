@@ -21,7 +21,7 @@ export type Expense = {
   createdAt: string;
 };
 
-export type WantItem = {
+export type WishlistItem = {
   id: string;
   name: string;
   priceCents: number;
@@ -58,7 +58,7 @@ export type AddExpenseInput = {
   amountCents: number;
 };
 
-export type AddWantInput = {
+export type AddWishlistInput = {
   name: string;
   priceCents: number;
   url: string;

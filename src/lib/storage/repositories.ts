@@ -2,11 +2,11 @@ import type {
   Account,
   AddAccountInput,
   AddExpenseInput,
-  AddWantInput,
+  AddWishlistInput,
   AppSettings,
   AssetRecord,
   Expense,
-  WantItem
+  WishlistItem
 } from '../types';
 import { getBudgetDb, resetBudgetDb } from './db';
 import { createId } from '../utils/id';
@@ -28,8 +28,10 @@ function sortExpenses(expenses: Expense[]) {
   });
 }
 
-function sortWants(wants: WantItem[]) {
-  return [...wants].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+function sortWishlistItems(wishlistItems: WishlistItem[]) {
+  return [...wishlistItems].sort((left, right) =>
+    right.createdAt.localeCompare(left.createdAt)
+  );
 }
 
 export const settingsRepo = {
@@ -187,16 +189,18 @@ export const expensesRepo = {
   }
 };
 
-export const wantsRepo = {
-  async list(): Promise<WantItem[]> {
+export const wishlistRepo = {
+  async list(): Promise<WishlistItem[]> {
     const db = await getBudgetDb();
-    const wants = await db.getAll('wants');
-    return sortWants(wants);
+    const wishlistItems = await db.getAll('wishlist');
+    return sortWishlistItems(wishlistItems);
   },
 
-  async create(input: Omit<AddWantInput, 'imageFile'> & { imageAssetId: string }): Promise<WantItem> {
+  async create(
+    input: Omit<AddWishlistInput, 'imageFile'> & { imageAssetId: string }
+  ): Promise<WishlistItem> {
     const db = await getBudgetDb();
-    const want: WantItem = {
+    const wishlistItem: WishlistItem = {
       id: createId(),
       createdAt: new Date().toISOString(),
       imageAssetId: input.imageAssetId,
@@ -205,13 +209,13 @@ export const wantsRepo = {
       url: input.url
     };
 
-    await db.put('wants', want);
-    return want;
+    await db.put('wishlist', wishlistItem);
+    return wishlistItem;
   },
 
   async delete(id: string): Promise<void> {
     const db = await getBudgetDb();
-    await db.delete('wants', id);
+    await db.delete('wishlist', id);
   }
 };
 
