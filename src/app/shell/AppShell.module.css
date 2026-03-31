@@ -31,9 +31,10 @@
   align-self: center;
   padding: 0.85rem 1.15rem;
   border-radius: 999px;
-  background: rgba(13, 19, 33, 0.08);
+  background: rgba(125, 211, 252, 0.12);
   color: var(--text-primary);
   font-weight: 700;
+  border: 1px solid rgba(125, 211, 252, 0.18);
 }
 
 .main {
@@ -48,8 +49,8 @@
   gap: 0.65rem;
   padding: 0.85rem;
   margin-top: 1rem;
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.72);
+  background: rgba(6, 10, 20, 0.84);
+  border: 1px solid var(--border-soft);
   border-radius: 28px;
   backdrop-filter: blur(16px);
   box-shadow: var(--shadow-card);

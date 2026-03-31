@@ -4,7 +4,7 @@
   z-index: 12;
   display: grid;
   align-items: end;
-  background: rgba(13, 19, 33, 0.25);
+  background: rgba(2, 6, 16, 0.55);
   backdrop-filter: blur(18px);
 }
 
@@ -14,6 +14,7 @@
   padding: 1.25rem 1rem calc(var(--safe-bottom) + 1rem);
   border-radius: 32px 32px 0 0;
   background: var(--surface-strong);
+  border: 1px solid var(--border-soft);
   box-shadow: var(--shadow-soft);
   display: grid;
   gap: 1rem;
@@ -48,8 +49,9 @@
 
 .closeButton {
   padding: 0.8rem 1rem;
-  background: rgba(13, 19, 33, 0.08);
+  background: rgba(125, 211, 252, 0.12);
   color: var(--text-primary);
+  border: 1px solid rgba(125, 211, 252, 0.16);
 }
 
 .formGrid {
@@ -63,7 +65,7 @@
   overflow: hidden;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, #fefae0, #f7ede2);
+  background: linear-gradient(135deg, rgba(125, 211, 252, 0.18), rgba(56, 189, 248, 0.08));
   color: var(--text-secondary);
 }
 
@@ -77,8 +79,8 @@
   margin: 0;
   padding: 0.85rem 1rem;
   border-radius: 16px;
-  background: rgba(214, 40, 40, 0.08);
-  color: #8b1e1e;
+  background: rgba(248, 113, 113, 0.12);
+  color: #fca5a5;
   font-weight: 600;
 }
 

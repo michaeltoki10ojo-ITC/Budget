@@ -3,6 +3,7 @@ import { useBudgetApp } from '../../app/state/BudgetAppContext';
 import { ensureFiveIncrement, isFiveIncrement, parseCurrencyInputToCents } from '../../lib/utils/money';
 import { isValidPin } from '../../lib/utils/pin';
 import type { SetupAccountInput } from '../../lib/types';
+import { ACCOUNT_LOGO_OPTIONS, type PresetLogoOption } from './logoOptions';
 import styles from './SetupFlow.module.css';
 
 const STARTER_ACCOUNTS = ['Checking', 'Cash', 'Savings'];
@@ -12,6 +13,7 @@ type AccountSetupForm = {
   balance: string;
   logoFile: File | null;
   preview: string;
+  selectedPresetId: string | null;
 };
 
 function readPreview(file: File): Promise<string> {
@@ -20,6 +22,16 @@ function readPreview(file: File): Promise<string> {
     reader.onload = () => resolve(String(reader.result));
     reader.onerror = () => reject(reader.error ?? new Error('Unable to preview image.'));
     reader.readAsDataURL(file);
+  });
+}
+
+async function presetToFile(preset: PresetLogoOption): Promise<File> {
+  const response = await fetch(preset.src);
+  const blob = await response.blob();
+  const extension = preset.src.split('.').pop()?.split('?')[0] ?? 'png';
+
+  return new File([blob], `${preset.id}.${extension}`, {
+    type: blob.type || 'image/png'
   });
 }
 
@@ -35,7 +47,8 @@ export function SetupFlow() {
       name,
       balance: '0',
       logoFile: null,
-      preview: ''
+      preview: '',
+      selectedPresetId: null
     }))
   );
 
@@ -58,7 +71,9 @@ export function SetupFlow() {
     if (!file) {
       setAccounts((currentAccounts) =>
         currentAccounts.map((account, currentIndex) =>
-          currentIndex === index ? { ...account, logoFile: null, preview: '' } : account
+          currentIndex === index
+            ? { ...account, logoFile: null, preview: '', selectedPresetId: null }
+            : account
         )
       );
       return;
@@ -68,7 +83,26 @@ export function SetupFlow() {
 
     setAccounts((currentAccounts) =>
       currentAccounts.map((account, currentIndex) =>
-        currentIndex === index ? { ...account, logoFile: file, preview } : account
+        currentIndex === index
+          ? { ...account, logoFile: file, preview, selectedPresetId: null }
+          : account
+      )
+    );
+  }
+
+  async function handlePresetSelect(index: number, preset: PresetLogoOption) {
+    const logoFile = await presetToFile(preset);
+
+    setAccounts((currentAccounts) =>
+      currentAccounts.map((account, currentIndex) =>
+        currentIndex === index
+          ? {
+              ...account,
+              logoFile,
+              preview: preset.src,
+              selectedPresetId: preset.id
+            }
+          : account
       )
     );
   }
@@ -115,8 +149,8 @@ export function SetupFlow() {
         <p className={styles.eyebrow}>First-time setup</p>
         <h1 className={styles.title}>Make Budget yours.</h1>
         <p className={styles.subtitle}>
-          Everything stays on this device. Set a PIN, add your starter balances, and upload a logo
-          for each account.
+          Everything stays on this device. Set a PIN, add your starter balances, and choose a
+          logo for each account from your built-in options or your own upload.
         </p>
 
         {step === 'pin' ? (
@@ -194,16 +228,41 @@ export function SetupFlow() {
                     />
                   </label>
 
-                  <label>
-                    Account logo
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(event) =>
-                        void handleLogoChange(index, event.target.files?.[0] ?? null)
-                      }
-                    />
-                  </label>
+                  <div className={styles.logoSection}>
+                    <div className={styles.logoSectionHeader}>
+                      <span>Pick account logo</span>
+                      <small>Built-in picks from your account logo folder</small>
+                    </div>
+
+                    <div className={styles.logoOptionGrid}>
+                      {ACCOUNT_LOGO_OPTIONS.map((option) => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          className={
+                            account.selectedPresetId === option.id
+                              ? `${styles.logoOptionButton} ${styles.logoOptionButtonSelected}`
+                              : styles.logoOptionButton
+                          }
+                          onClick={() => void handlePresetSelect(index, option)}
+                        >
+                          <img src={option.src} alt={option.label} />
+                          <span>{option.label}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <label className={styles.uploadLabel}>
+                      Or upload your own
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(event) =>
+                          void handleLogoChange(index, event.target.files?.[0] ?? null)
+                        }
+                      />
+                    </label>
+                  </div>
                 </section>
               ))}
             </div>
