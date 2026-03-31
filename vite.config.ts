@@ -2,8 +2,11 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
+const repoName = process.env.GITHUB_REPOSITORY?.split('/')[1] ?? 'Budget-1';
+const pagesBase = `/${repoName}/`;
+
 export default defineConfig(({ command }) => ({
-  base: command === 'build' ? '/Budget/' : '/',
+  base: command === 'build' ? pagesBase : '/',
   plugins: [
     react(),
     VitePWA({
@@ -17,7 +20,7 @@ export default defineConfig(({ command }) => ({
         background_color: '#f6f5f0',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/Budget/#/',
+        start_url: `${pagesBase}#/`,
         icons: [
           {
             src: 'icons/icon-192.svg',
