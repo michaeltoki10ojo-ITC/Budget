@@ -19,9 +19,10 @@ describe('SetupFlow', () => {
 
     await user.type(screen.getByLabelText(/create 4-digit pin/i), '1234');
     await user.type(screen.getByLabelText(/confirm pin/i), '1234');
-    await user.click(screen.getByRole('button', { name: /continue to accounts/i }));
+    await user.click(screen.getByRole('button', { name: /continue to account setup/i }));
 
     expect(screen.getByText(/checking/i)).toBeInTheDocument();
+    expect(screen.getAllByLabelText(/starting balance/i)).toHaveLength(1);
     expect(screen.getByText(/finish setup/i)).toBeInTheDocument();
   });
 
@@ -32,7 +33,7 @@ describe('SetupFlow', () => {
 
     await user.type(screen.getByLabelText(/create 4-digit pin/i), '1234');
     await user.type(screen.getByLabelText(/confirm pin/i), '1234');
-    await user.click(screen.getByRole('button', { name: /continue to accounts/i }));
+    await user.click(screen.getByRole('button', { name: /continue to account setup/i }));
 
     const firstBalanceInput = screen.getAllByLabelText(/starting balance/i)[0];
 
@@ -42,5 +43,22 @@ describe('SetupFlow', () => {
 
     expect(firstBalanceInput).toHaveValue(20);
     expect(screen.getByText('Rounded to $20.00.')).toBeInTheDocument();
+  });
+
+  it('allows renaming the first account during setup', async () => {
+    const user = userEvent.setup();
+
+    render(<SetupFlow />);
+
+    await user.type(screen.getByLabelText(/create 4-digit pin/i), '1234');
+    await user.type(screen.getByLabelText(/confirm pin/i), '1234');
+    await user.click(screen.getByRole('button', { name: /continue to account setup/i }));
+
+    const accountNameInput = screen.getByLabelText(/account name/i);
+
+    await user.clear(accountNameInput);
+    await user.type(accountNameInput, 'Travel fund');
+
+    expect(screen.getByText(/travel fund/i)).toBeInTheDocument();
   });
 });

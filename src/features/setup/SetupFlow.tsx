@@ -10,7 +10,7 @@ import type { SetupAccountInput } from '../../lib/types';
 import { ACCOUNT_LOGO_OPTIONS, presetLogoToFile } from './logoOptions';
 import styles from './SetupFlow.module.css';
 
-const STARTER_ACCOUNTS = ['Checking', 'Cash', 'Savings'];
+const INITIAL_ACCOUNT_NAME = 'Checking';
 
 type AccountSetupForm = {
   name: string;
@@ -38,14 +38,16 @@ export function SetupFlow() {
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [accounts, setAccounts] = useState<AccountSetupForm[]>(
-    STARTER_ACCOUNTS.map((name) => ({
-      name,
-      balance: '0',
-      balanceNote: '',
-      logoFile: null,
-      preview: '',
-      selectedPresetId: null
-    }))
+    [
+      {
+        name: INITIAL_ACCOUNT_NAME,
+        balance: '0',
+        balanceNote: '',
+        logoFile: null,
+        preview: '',
+        selectedPresetId: null
+      }
+    ]
   );
 
   function handlePinContinue() {
@@ -137,16 +139,22 @@ export function SetupFlow() {
     try {
       const normalizedAccounts = accounts.map((account) => {
         const roundedInput = roundCurrencyInputToFiveIncrement(account.balance, 'down');
+        const trimmedName = account.name.trim();
+
+        if (!trimmedName) {
+          throw new Error('Add a name for your first account.');
+        }
 
         if (roundedInput === null) {
-          throw new Error(`Enter a starting balance for ${account.name}.`);
+          throw new Error(`Enter a starting balance for ${trimmedName}.`);
         }
 
         if (!account.logoFile) {
-          throw new Error(`Upload a logo for ${account.name}.`);
+          throw new Error(`Upload a logo for ${trimmedName}.`);
         }
 
         return {
+          name: trimmedName,
           roundedCents: roundedInput.roundedCents,
           displayValue: centsToInputValue(roundedInput.roundedCents, 0),
           note: roundedInput.didRound
@@ -165,13 +173,14 @@ export function SetupFlow() {
 
       const payload: SetupAccountInput[] = accounts.map((account, index) => {
         const logoFile = account.logoFile;
+        const trimmedName = normalizedAccounts[index].name;
 
         if (!logoFile) {
-          throw new Error(`Upload a logo for ${account.name}.`);
+          throw new Error(`Upload a logo for ${trimmedName}.`);
         }
 
         return {
-          name: account.name,
+          name: trimmedName,
           balanceCents: normalizedAccounts[index].roundedCents,
           logoFile
         };
@@ -194,8 +203,9 @@ export function SetupFlow() {
         <p className={styles.eyebrow}>First-time setup</p>
         <h1 className={styles.title}>Make Budget yours.</h1>
         <p className={styles.subtitle}>
-          Everything stays on this device. Set a PIN, add your starter balances, and choose a
-          logo for each account from your built-in options or your own upload.
+          Everything stays on this device. Set a PIN, create your first account, and pick its
+          logo from your built-in options or your own upload. You can add more accounts after
+          setup.
         </p>
 
         {step === 'pin' ? (
@@ -231,27 +241,50 @@ export function SetupFlow() {
             {errorMessage ? <p className={styles.error}>{errorMessage}</p> : null}
 
             <button type="button" className={styles.primaryButton} onClick={handlePinContinue}>
-              Continue to accounts
+              Continue to account setup
             </button>
           </div>
         ) : (
           <form className={styles.formStack} onSubmit={handleSetupSubmit}>
             <div className={styles.accountGrid}>
               {accounts.map((account, index) => (
-                <section key={account.name} className={styles.accountCard}>
+                <section key={index} className={styles.accountCard}>
                   <div className={styles.accountHeader}>
                     <div>
-                      <h2>{account.name}</h2>
-                      <p>Starting balances round down to the nearest $5.</p>
+                      <h2>{account.name.trim() || 'Your first account'}</h2>
+                      <p>Start with one account here, then add more from the home screen.</p>
                     </div>
                     <div className={styles.logoPreview}>
                       {account.preview ? (
-                        <img src={account.preview} alt={`${account.name} preview`} />
+                        <img
+                          src={account.preview}
+                          alt={`${account.name.trim() || 'Account'} preview`}
+                        />
                       ) : (
-                        <span>{account.name.slice(0, 1)}</span>
+                        <span>{(account.name.trim() || 'A').slice(0, 1).toUpperCase()}</span>
                       )}
                     </div>
                   </div>
+
+                  <label>
+                    Account name
+                    <input
+                      value={account.name}
+                      onChange={(event) =>
+                        setAccounts((currentAccounts) =>
+                          currentAccounts.map((currentAccount, currentIndex) =>
+                            currentIndex === index
+                              ? {
+                                  ...currentAccount,
+                                  name: event.target.value
+                                }
+                              : currentAccount
+                          )
+                        )
+                      }
+                      placeholder="Checking"
+                    />
+                  </label>
 
                   <label>
                     Starting balance
