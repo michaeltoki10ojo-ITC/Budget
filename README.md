@@ -4,6 +4,10 @@ Cloud-synced budgeting app built with React, Vite, and Supabase. This branch rep
 original local-only PIN flow with magic-link sign-in, cross-device accounts, a ledger-backed
 transaction model, recurring rules, transfers, and a synced wishlist.
 
+## Live App
+
+[Open Budget V2](https://michaeltoki10ojo-itc.github.io/Budget/)
+
 ## What Changed
 
 - Magic-link email sign-in with Supabase Auth
@@ -36,6 +40,6 @@ VITE_SUPABASE_ANON_KEY=your_anon_key
 
 ## Notes
 
-- This branch is intended for V2 work and does not modify the production app on `main`.
+- The previous local-only app is archived in [`V1`](./V1).
 - The frontend only needs the publishable/anon key. Never expose the Supabase `service_role` key
   in the browser.
