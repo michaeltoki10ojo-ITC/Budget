@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { configDefaults } from 'vitest/config';
 
 const repoName = process.env.GITHUB_REPOSITORY?.split('/')[1] ?? 'Budget-1';
 const pagesBase = `/${repoName}/`;
@@ -42,6 +43,7 @@ export default defineConfig(({ command }) => ({
     environment: 'jsdom',
     globals: true,
     setupFiles: './src/test/setup.ts',
-    css: true
+    css: true,
+    exclude: [...configDefaults.exclude, 'V1/**']
   }
 }));

@@ -52,6 +52,33 @@
   white-space: nowrap;
 }
 
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.metricCard {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.9rem;
+  border-radius: 18px;
+  background: rgba(7, 12, 24, 0.72);
+  border: 1px solid rgba(125, 211, 252, 0.12);
+}
+
+.metricCard span {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.metricCard strong {
+  font-size: 1rem;
+}
+
 .accountList {
   display: grid;
   gap: 0.9rem;
@@ -119,9 +146,76 @@
   text-align: right;
 }
 
+.activityCard {
+  padding: 1.15rem;
+  border-radius: 28px;
+  background: var(--surface-strong);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-card);
+}
+
+.activityHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.activityHeader h3 {
+  margin: 0.3rem 0 0;
+}
+
+.activityHeader span {
+  min-width: 2.4rem;
+  height: 2.4rem;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(125, 211, 252, 0.12);
+  font-weight: 700;
+}
+
+.activityList {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.activityRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.95rem 1rem;
+  border-radius: 20px;
+  background: rgba(13, 22, 39, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.activityName,
+.activityMeta,
+.emptyText {
+  margin: 0;
+}
+
+.activityName {
+  font-weight: 700;
+}
+
+.activityMeta,
+.emptyText {
+  margin-top: 0.3rem;
+  color: var(--text-secondary);
+}
+
+.activityAmount {
+  font-size: 1rem;
+}
+
 @media (min-width: 768px) {
   .summaryCard,
-  .accountCard {
+  .accountCard,
+  .activityCard {
     padding: 1.4rem;
   }
 }

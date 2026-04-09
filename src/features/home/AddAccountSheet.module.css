@@ -64,6 +64,22 @@
   color: var(--text-secondary);
 }
 
+.helperSpacer,
+.helperSpacerTall {
+  visibility: hidden;
+  display: block;
+  color: transparent;
+  user-select: none;
+}
+
+.helperSpacer {
+  min-height: 1.35rem;
+}
+
+.helperSpacerTall {
+  min-height: 2.7rem;
+}
+
 .roundedNote {
   color: var(--surface-accent);
   font-weight: 600;

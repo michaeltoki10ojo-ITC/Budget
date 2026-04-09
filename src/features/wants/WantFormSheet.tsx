@@ -1,7 +1,15 @@
 import { useState, type FormEvent } from 'react';
 import type { AddWishlistInput } from '../../lib/types';
-import { parseCurrencyInputToCents } from '../../lib/utils/money';
+import {
+  centsToInputValue,
+  describeRoundingRule,
+  formatCurrency,
+  getInputFractionDigits,
+  roundCurrencyInput
+} from '../../lib/utils/money';
 import styles from './WantFormSheet.module.css';
+
+const WISHLIST_ROUNDING_MODE = 'exact';
 
 type WishlistFormSheetProps = {
   isOpen: boolean;
@@ -33,6 +41,7 @@ export function WishlistFormSheet({
 }: WishlistFormSheetProps) {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
+  const [priceNote, setPriceNote] = useState('');
   const [url, setUrl] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [preview, setPreview] = useState('');
@@ -53,34 +62,49 @@ export function WishlistFormSheet({
     setPreview(await readPreview(file));
   }
 
+  function applyRoundedPrice() {
+    const roundedInput = roundCurrencyInput(price, WISHLIST_ROUNDING_MODE, 'down');
+
+    if (!roundedInput) {
+      setPriceNote('');
+      return;
+    }
+
+    setPrice(centsToInputValue(roundedInput.roundedCents, getInputFractionDigits(WISHLIST_ROUNDING_MODE)));
+    setPriceNote(
+      roundedInput.didRound ? `Rounded to ${formatCurrency(roundedInput.roundedCents)}.` : ''
+    );
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErrorMessage('');
 
     try {
-      const priceCents = parseCurrencyInputToCents(price);
+      const roundedInput = roundCurrencyInput(price, WISHLIST_ROUNDING_MODE, 'down');
 
       if (!name.trim()) {
         throw new Error('Add a wishlist item name.');
       }
 
-      if (priceCents === null || priceCents <= 0) {
+      if (!roundedInput || roundedInput.roundedCents <= 0) {
         throw new Error('Add a valid price.');
       }
 
-      if (!imageFile) {
-        throw new Error('Upload an image for this wishlist item.');
+      if (!url.trim()) {
+        throw new Error('Add a link for this wishlist item.');
       }
 
       await onSubmit({
         name: name.trim(),
-        priceCents,
+        priceCents: roundedInput.roundedCents,
         url: normalizeUrl(url.trim()),
         imageFile
       });
 
       setName('');
       setPrice('');
+      setPriceNote('');
       setUrl('');
       setImageFile(null);
       setPreview('');
@@ -121,7 +145,11 @@ export function WishlistFormSheet({
               step="0.01"
               min="0.01"
               value={price}
-              onChange={(event) => setPrice(event.target.value)}
+              onChange={(event) => {
+                setPrice(event.target.value);
+                setPriceNote('');
+              }}
+              onBlur={applyRoundedPrice}
               placeholder="129.99"
             />
           </label>
@@ -137,7 +165,7 @@ export function WishlistFormSheet({
           </label>
 
           <label>
-            Image
+            Image (optional)
             <input
               type="file"
               accept="image/*"
@@ -145,6 +173,10 @@ export function WishlistFormSheet({
             />
           </label>
         </div>
+
+        <p className={priceNote ? styles.roundedNote : styles.formHint}>
+          {priceNote || `Wishlist prices ${describeRoundingRule(WISHLIST_ROUNDING_MODE, 'down')}`}
+        </p>
 
         <div className={styles.previewCard}>
           {preview ? (

@@ -5,9 +5,11 @@
 
 .backButton,
 .primaryButton,
+.secondaryButton,
 .deleteButton,
 .adjustPositive,
-.adjustNegative {
+.adjustNegative,
+.modeChip {
   font-weight: 700;
 }
 
@@ -81,6 +83,11 @@
   font-size: 1.25rem;
 }
 
+.headerHint {
+  margin: 0.35rem 0 0;
+  color: var(--text-secondary);
+}
+
 .balanceValue {
   grid-column: 1 / -1;
   margin: 0;
@@ -90,7 +97,8 @@
 }
 
 .adjustCard,
-.expenseForm,
+.entryForm,
+.transferForm,
 .listCard,
 .emptyState {
   padding: 1rem;
@@ -132,16 +140,47 @@
   gap: 1rem;
 }
 
-.primaryButton {
+.primaryButton,
+.secondaryButton {
   min-height: 3.2rem;
   padding: 0.9rem 1.1rem;
   border-radius: 18px;
+}
+
+.primaryButton {
   background: var(--cta-fill);
   color: var(--cta-text);
   box-shadow: var(--cta-shadow);
 }
 
-.formGrid {
+.secondaryButton {
+  background: rgba(148, 163, 184, 0.14);
+  color: var(--text-primary);
+}
+
+.modeSelector {
+  display: flex;
+  gap: 0.65rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.modeChip {
+  min-height: 2.75rem;
+  padding: 0.7rem 1rem;
+  border-radius: 999px;
+  background: rgba(13, 22, 39, 0.9);
+  color: var(--text-primary);
+  border: 1px solid var(--border-soft);
+}
+
+.modeChipActive {
+  background: rgba(125, 211, 252, 0.16);
+  border-color: rgba(125, 211, 252, 0.36);
+}
+
+.formGrid,
+.transferGrid {
   display: grid;
   gap: 0.85rem;
   margin-top: 1rem;
@@ -156,28 +195,11 @@
   font-weight: 600;
 }
 
-.suggestionBlock {
-  display: grid;
-  gap: 0.7rem;
-  margin-top: 1rem;
-}
-
-.suggestionHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.suggestionHeader span {
-  color: var(--text-secondary);
-  font-size: 0.82rem;
-}
-
 .suggestionGrid {
   display: flex;
   flex-wrap: wrap;
   gap: 0.6rem;
+  margin-top: 1rem;
 }
 
 .suggestionChip {
@@ -204,7 +226,7 @@
   font-weight: 600;
 }
 
-.expenseCount {
+.entryCount {
   min-width: 2.4rem;
   height: 2.4rem;
   display: inline-grid;
@@ -223,21 +245,22 @@
 
 .emptyList p,
 .emptyList span,
-.expenseName,
-.expenseDate {
+.entryName,
+.entryDate,
+.recurringHint {
   margin: 0;
 }
 
-.expenseScroller {
+.entryScroller {
   display: grid;
   gap: 0.75rem;
   margin-top: 1rem;
-  max-height: 38vh;
+  max-height: 42vh;
   overflow: auto;
   padding-right: 0.15rem;
 }
 
-.expenseRow {
+.entryRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -248,23 +271,44 @@
   border: 1px solid rgba(148, 163, 184, 0.12);
 }
 
-.expenseName {
+.entryMeta {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.entryTopRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.entryName {
   font-weight: 700;
 }
 
-.expenseDate {
-  margin-top: 0.35rem;
+.entryBadge {
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(125, 211, 252, 0.12);
+  color: var(--surface-accent);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.entryDate,
+.recurringHint {
   color: var(--text-secondary);
   font-size: 0.92rem;
 }
 
-.expenseActions {
+.entryActions {
   display: grid;
   justify-items: end;
   gap: 0.45rem;
 }
 
-.expenseAmount {
+.entryAmount {
   font-size: 1rem;
 }
 
@@ -294,8 +338,9 @@
     text-align: right;
   }
 
-  .formGrid {
-    grid-template-columns: 2fr 1fr 1fr;
+  .formGrid,
+  .transferGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     align-items: end;
   }
 }

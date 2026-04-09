@@ -6,7 +6,7 @@ import { WishlistFormSheet } from './WantFormSheet';
 import styles from './WantsPage.module.css';
 
 export function WishlistPage() {
-  const { wishlistItems, assets, addWishlistItem, deleteWishlistItem } = useBudgetApp();
+  const { wishlistItems, assetUrls, addWishlistItem, removeWishlistItem } = useBudgetApp();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const totalWishlistValue = sumCents(
@@ -30,7 +30,7 @@ export function WishlistPage() {
           <p className={styles.totalLabel}>Wishlist total</p>
           <h2 className={styles.totalValue}>{formatCurrency(totalWishlistValue)}</h2>
           <p className={styles.totalCaption}>
-            Save the things you want to buy later, complete with a photo and link.
+            Save the things you want to buy later, complete with an optional image and link.
           </p>
         </section>
 
@@ -42,13 +42,15 @@ export function WishlistPage() {
             </div>
           ) : (
             wishlistItems.map((wishlistItem) => {
-              const image = assets[wishlistItem.imageAssetId];
+              const image = wishlistItem.imagePath
+                ? assetUrls[wishlistItem.imagePath]
+                : undefined;
 
               return (
                 <article key={wishlistItem.id} className={styles.wantCard}>
                   <div className={styles.imageFrame}>
                     {image ? (
-                      <img src={image.dataUrl} alt={wishlistItem.name} />
+                      <img src={image} alt={wishlistItem.name} />
                     ) : (
                       <span>{wishlistItem.name.slice(0, 1)}</span>
                     )}
@@ -75,7 +77,7 @@ export function WishlistPage() {
                               `Delete "${wishlistItem.name}" from your wishlist?`
                             )
                           ) {
-                            void deleteWishlistItem(wishlistItem.id);
+                            void removeWishlistItem(wishlistItem.id);
                           }
                         }}
                       >

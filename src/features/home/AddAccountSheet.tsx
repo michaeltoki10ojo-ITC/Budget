@@ -1,15 +1,16 @@
 import { useState, type FormEvent } from 'react';
-import type { AddAccountInput } from '../../lib/types';
+import type { AccountRoundingMode, AddAccountInput } from '../../lib/types';
 import {
+  buildAccountRoundingOptions,
   centsToInputValue,
+  DEFAULT_ROUNDING_MODE,
+  describeRoundingRule,
   formatCurrency,
-  roundCurrencyInputToFiveIncrement
+  getInputFractionDigits,
+  getSignedInputDirection,
+  roundCurrencyInput
 } from '../../lib/utils/money';
-import {
-  ACCOUNT_LOGO_OPTIONS,
-  presetLogoToFile,
-  type PresetLogoOption
-} from '../setup/logoOptions';
+import { ACCOUNT_LOGO_OPTIONS, presetLogoToFile } from '../setup/logoOptions';
 import styles from './AddAccountSheet.module.css';
 
 type AddAccountSheetProps = {
@@ -19,19 +20,17 @@ type AddAccountSheetProps = {
   onSubmit: (input: AddAccountInput) => Promise<void>;
 };
 
-type NameMode = 'manual' | 'preset';
-
 type PreviewState = {
   logoFile: File | null;
   preview: string;
-  selectedPresetId: string | null;
+  selectedPresetId: string;
 };
 
 function defaultPreviewState(): PreviewState {
   return {
     logoFile: null,
     preview: '',
-    selectedPresetId: null
+    selectedPresetId: ''
   };
 }
 
@@ -51,9 +50,10 @@ export function AddAccountSheet({
   onSubmit
 }: AddAccountSheetProps) {
   const [name, setName] = useState('');
-  const [nameMode, setNameMode] = useState<NameMode>('manual');
   const [balance, setBalance] = useState('0');
   const [balanceNote, setBalanceNote] = useState('');
+  const [roundingOverrideMode, setRoundingOverrideMode] =
+    useState<AccountRoundingMode>(DEFAULT_ROUNDING_MODE);
   const [logoState, setLogoState] = useState<PreviewState>(defaultPreviewState);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -61,11 +61,22 @@ export function AddAccountSheet({
     return null;
   }
 
-  async function handlePresetSelect(preset: PresetLogoOption) {
+  const effectiveMode = roundingOverrideMode;
+
+  async function handlePresetChange(presetId: string) {
+    if (!presetId) {
+      setLogoState(defaultPreviewState());
+      return;
+    }
+
+    const preset = ACCOUNT_LOGO_OPTIONS.find((option) => option.id === presetId);
+
+    if (!preset) {
+      return;
+    }
+
     const logoFile = await presetLogoToFile(preset);
     setName(preset.label);
-    setNameMode('preset');
-
     setLogoState({
       logoFile,
       preview: preset.src,
@@ -80,13 +91,29 @@ export function AddAccountSheet({
     }
 
     const preview = await readPreview(file);
-    setName((currentName) => (nameMode === 'preset' ? '' : currentName));
-    setNameMode('manual');
     setLogoState({
       logoFile: file,
       preview,
-      selectedPresetId: null
+      selectedPresetId: ''
     });
+  }
+
+  function applyRoundedBalance() {
+    const roundedInput = roundCurrencyInput(
+      balance,
+      effectiveMode,
+      getSignedInputDirection(balance)
+    );
+
+    if (!roundedInput) {
+      setBalanceNote('');
+      return;
+    }
+
+    setBalance(centsToInputValue(roundedInput.roundedCents, getInputFractionDigits(effectiveMode)));
+    setBalanceNote(
+      roundedInput.didRound ? `Rounded to ${formatCurrency(roundedInput.roundedCents)}.` : ''
+    );
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -94,7 +121,11 @@ export function AddAccountSheet({
     setErrorMessage('');
 
     try {
-      const roundedInput = roundCurrencyInputToFiveIncrement(balance, 'down');
+      const roundedInput = roundCurrencyInput(
+        balance,
+        effectiveMode,
+        getSignedInputDirection(balance)
+      );
 
       if (!name.trim()) {
         throw new Error('Add an account name.');
@@ -104,44 +135,27 @@ export function AddAccountSheet({
         throw new Error('Add a starting balance.');
       }
 
-      if (!logoState.logoFile) {
-        throw new Error('Pick a logo or upload your own.');
-      }
-
-      setBalance(centsToInputValue(roundedInput.roundedCents, 0));
+      setBalance(centsToInputValue(roundedInput.roundedCents, getInputFractionDigits(effectiveMode)));
       setBalanceNote(
         roundedInput.didRound ? `Rounded to ${formatCurrency(roundedInput.roundedCents)}.` : ''
       );
 
       await onSubmit({
         name: name.trim(),
-        balanceCents: roundedInput.roundedCents,
-        logoFile: logoState.logoFile
+        openingBalanceCents: roundedInput.roundedCents,
+        logoFile: logoState.logoFile,
+        roundingOverrideMode
       });
 
       setName('');
-      setNameMode('manual');
       setBalance('0');
       setBalanceNote('');
+      setRoundingOverrideMode(DEFAULT_ROUNDING_MODE);
       setLogoState(defaultPreviewState());
       onClose();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Unable to create account.');
     }
-  }
-
-  function applyRoundedBalance() {
-    const roundedInput = roundCurrencyInputToFiveIncrement(balance, 'down');
-
-    if (!roundedInput) {
-      setBalanceNote('');
-      return;
-    }
-
-    setBalance(centsToInputValue(roundedInput.roundedCents, 0));
-    setBalanceNote(
-      roundedInput.didRound ? `Rounded to ${formatCurrency(roundedInput.roundedCents)}.` : ''
-    );
   }
 
   return (
@@ -162,18 +176,10 @@ export function AddAccountSheet({
             Account name
             <input
               value={name}
-              onChange={(event) => {
-                setName(event.target.value);
-                setNameMode('manual');
-              }}
-              readOnly={Boolean(logoState.selectedPresetId)}
+              onChange={(event) => setName(event.target.value)}
               placeholder="Savings jar"
             />
-            <small className={styles.helperText}>
-              {logoState.selectedPresetId
-                ? 'Preset logos name this account automatically.'
-                : 'If you upload your own image, choose the account name here.'}
-            </small>
+            <small className={styles.helperSpacer} aria-hidden="true" />
           </label>
 
           <label>
@@ -191,7 +197,43 @@ export function AddAccountSheet({
               placeholder="0"
             />
             <small className={balanceNote ? styles.roundedNote : styles.helperText}>
-              {balanceNote || 'Incoming balances round down to the nearest $5.'}
+              {balanceNote || `Starting balances ${describeRoundingRule(effectiveMode, getSignedInputDirection(balance))}`}
+            </small>
+          </label>
+
+          <label>
+            Account rounding
+            <select
+              value={roundingOverrideMode}
+              onChange={(event) => {
+                setRoundingOverrideMode(event.target.value as AccountRoundingMode);
+                setBalanceNote('');
+              }}
+            >
+              {buildAccountRoundingOptions().map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <small className={styles.helperSpacerTall} aria-hidden="true" />
+          </label>
+
+          <label>
+            Logo or account type
+            <select
+              value={logoState.selectedPresetId}
+              onChange={(event) => void handlePresetChange(event.target.value)}
+            >
+              <option value="">No preset</option>
+              {ACCOUNT_LOGO_OPTIONS.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <small className={styles.helperText}>
+              Presets give you a quick starting point and you can still rename the account.
             </small>
           </label>
         </div>
@@ -199,7 +241,7 @@ export function AddAccountSheet({
         <div className={styles.logoSection}>
           <div className={styles.logoHeader}>
             <span>Choose a logo</span>
-            <small>Use one of your preset account logos or upload a custom image.</small>
+            <small>Use a preset, upload your own, or skip this for now.</small>
           </div>
 
           <div className={styles.logoPreview}>
@@ -208,24 +250,6 @@ export function AddAccountSheet({
             ) : (
               <span>{(name || 'A').slice(0, 1).toUpperCase()}</span>
             )}
-          </div>
-
-          <div className={styles.logoOptionGrid}>
-            {ACCOUNT_LOGO_OPTIONS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                className={
-                  logoState.selectedPresetId === option.id
-                    ? `${styles.logoOptionButton} ${styles.logoOptionButtonSelected}`
-                    : styles.logoOptionButton
-                }
-                onClick={() => void handlePresetSelect(option)}
-              >
-                <img src={option.src} alt={option.label} />
-                <span>{option.label}</span>
-              </button>
-            ))}
           </div>
 
           <label>

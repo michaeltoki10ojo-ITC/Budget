@@ -1,316 +1,371 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from 'react';
 import type {
   Account,
   AddAccountInput,
-  AddExpenseInput,
+  AddRecurringRuleInput,
+  AddTransactionInput,
+  AddTransferInput,
   AddWishlistInput,
-  AppSettings,
-  AssetRecord,
-  Expense,
-  SetupAccountInput,
+  AuthUser,
+  CompleteOnboardingInput,
+  MonthlySummary,
+  Profile,
+  RecurringRule,
+  RoundingMode,
+  SaveRoundingPreferencesInput,
+  Transaction,
   WishlistItem
 } from '../../lib/types';
 import {
-  accountsRepo,
-  assetsRepo,
-  clearAllLocalData,
-  expensesRepo,
-  settingsRepo,
-  wishlistRepo
-} from '../../lib/storage/repositories';
-import { resizeImageToDataUrl } from '../../lib/utils/image';
-import { createId } from '../../lib/utils/id';
-import { hashPin, verifyPin } from '../../lib/utils/pin';
-import { ensureFiveIncrement } from '../../lib/utils/money';
+  completeOnboarding as completeOnboardingInSupabase,
+  createAccount,
+  createRecurringRule,
+  createTransaction,
+  createTransfer,
+  createWishlistItem,
+  deleteRecurringRule,
+  deleteTransactions,
+  deleteWishlistItem,
+  fetchBudgetSnapshot,
+  getSessionUser,
+  saveRoundingPreferences as saveRoundingPreferencesInSupabase,
+  sendMagicLink,
+  signOut as signOutFromSupabase,
+  subscribeToAuthChanges,
+  updateRecurringRuleState
+} from '../../lib/supabase/budgetApi';
+import { DEFAULT_ROUNDING_MODE, resolveAccountRoundingMode } from '../../lib/utils/money';
+import { todayInputValue } from '../../lib/utils/date';
+import { buildMonthlySummary } from '../../lib/utils/recurring';
 
-type BootStatus = 'loading' | 'setup' | 'locked' | 'ready';
+type BootStatus = 'loading' | 'signed_out' | 'onboarding' | 'ready';
 
 type BudgetAppContextValue = {
   bootStatus: BootStatus;
-  settings: AppSettings | null;
+  authUser: AuthUser | null;
+  profile: Profile | null;
+  roundingDefaultMode: RoundingMode;
+  configurationError: string | null;
   accounts: Account[];
-  expenses: Expense[];
+  transactions: Transaction[];
+  recurringRules: RecurringRule[];
   wishlistItems: WishlistItem[];
-  assets: Record<string, AssetRecord>;
-  completeSetup: (pin: string, accountInputs: SetupAccountInput[]) => Promise<void>;
+  assetUrls: Record<string, string>;
+  monthlySummary: MonthlySummary;
+  sendMagicLink: (email: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  refreshAppData: () => Promise<void>;
+  completeOnboarding: (input: CompleteOnboardingInput) => Promise<void>;
   addAccount: (input: AddAccountInput) => Promise<void>;
-  unlock: (pin: string) => Promise<boolean>;
-  lock: () => void;
+  getAccountRoundingMode: (accountId: string) => RoundingMode;
+  saveRoundingPreferences: (input: SaveRoundingPreferencesInput) => Promise<void>;
+  addTransaction: (input: AddTransactionInput) => Promise<void>;
   quickAdjustBalance: (accountId: string, deltaCents: number) => Promise<void>;
-  addExpense: (input: AddExpenseInput) => Promise<void>;
-  deleteExpense: (expenseId: string) => Promise<void>;
+  addTransfer: (input: AddTransferInput) => Promise<void>;
+  deleteTransaction: (transactionId: string) => Promise<void>;
+  addRecurringRule: (input: AddRecurringRuleInput) => Promise<void>;
+  toggleRecurringRule: (ruleId: string, isActive: boolean) => Promise<void>;
+  removeRecurringRule: (ruleId: string) => Promise<void>;
   addWishlistItem: (input: AddWishlistInput) => Promise<void>;
-  deleteWishlistItem: (wishlistItemId: string) => Promise<void>;
-  resetApp: () => Promise<void>;
+  removeWishlistItem: (wishlistItemId: string) => Promise<void>;
 };
 
 const BudgetAppContext = createContext<BudgetAppContextValue | undefined>(undefined);
 
-async function loadAllData() {
-  const [accounts, expenses, wishlistItems, assets] = await Promise.all([
-    accountsRepo.list(),
-    expensesRepo.listAll(),
-    wishlistRepo.list(),
-    assetsRepo.listAll()
-  ]);
+function createEmptySummary(): MonthlySummary {
+  const now = new Date();
 
   return {
-    accounts,
-    expenses,
-    wishlistItems,
-    assets: Object.fromEntries(assets.map((asset) => [asset.id, asset]))
+    monthLabel: now.toLocaleDateString('en-US', {
+      month: 'long',
+      year: 'numeric'
+    }),
+    incomeCents: 0,
+    expenseCents: 0,
+    adjustmentCents: 0,
+    netCents: 0,
+    accountTotalCents: 0
   };
 }
 
 export function BudgetAppProvider({ children }: { children: React.ReactNode }) {
   const [bootStatus, setBootStatus] = useState<BootStatus>('loading');
-  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [configurationError, setConfigurationError] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [recurringRules, setRecurringRules] = useState<RecurringRule[]>([]);
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
-  const [assets, setAssets] = useState<Record<string, AssetRecord>>({});
+  const [assetUrls, setAssetUrls] = useState<Record<string, string>>({});
+  const authUserRef = useRef<AuthUser | null>(null);
 
-  async function saveAccountWithLogo(
-    input: Pick<AddAccountInput, 'name' | 'balanceCents' | 'logoFile'>,
-    sortOrder?: number
-  ) {
-    const resizedImage = await resizeImageToDataUrl(input.logoFile);
-    const savedAsset = await assetsRepo.save(resizedImage);
-    const account =
-      typeof sortOrder === 'number'
-        ? {
-            id: createId(),
-            name: input.name,
-            logoAssetId: savedAsset.id,
-            balanceCents: input.balanceCents,
-            sortOrder,
-            createdAt: new Date().toISOString()
-          }
-        : await accountsRepo.create({
-            name: input.name,
-            balanceCents: input.balanceCents,
-            logoAssetId: savedAsset.id
-          });
+  const monthlySummary = useMemo(
+    () => buildMonthlySummary(accounts, transactions),
+    [accounts, transactions]
+  );
 
-    return { account, asset: savedAsset };
-  }
-
-  useEffect(() => {
-    async function bootstrap() {
-      const nextSettings = settingsRepo.get();
-
-      if (!nextSettings?.isSeeded || !nextSettings.pinHash) {
-        setSettings(null);
-        setAccounts([]);
-        setExpenses([]);
-        setWishlistItems([]);
-        setAssets({});
-        setBootStatus('setup');
-        return;
-      }
-
-      const data = await loadAllData();
-      setSettings(nextSettings);
-      setAccounts(data.accounts);
-      setExpenses(data.expenses);
-      setWishlistItems(data.wishlistItems);
-      setAssets(data.assets);
-      setBootStatus('locked');
-    }
-
-    void bootstrap();
-  }, []);
-
-  async function completeSetup(pin: string, accountInputs: SetupAccountInput[]) {
-    const pinHash = await hashPin(pin);
-    const seededAccounts: Account[] = [];
-    const nextAssets: Record<string, AssetRecord> = {};
-
-    for (let index = 0; index < accountInputs.length; index += 1) {
-      const accountInput = accountInputs[index];
-      const { account, asset } = await saveAccountWithLogo(accountInput, index);
-
-      seededAccounts.push(account);
-      nextAssets[asset.id] = asset;
-    }
-
-    await accountsRepo.seedStarterAccounts(seededAccounts);
-
-    const nextSettings: AppSettings = {
-      pinHash,
-      isSeeded: true
-    };
-
-    settingsRepo.save(nextSettings);
-
-    setSettings(nextSettings);
-    setAccounts(seededAccounts);
-    setExpenses([]);
+  function clearState() {
+    setProfile(null);
+    setAccounts([]);
+    setTransactions([]);
+    setRecurringRules([]);
     setWishlistItems([]);
-    setAssets(nextAssets);
-    setBootStatus('locked');
+    setAssetUrls({});
   }
 
-  async function addAccount(input: AddAccountInput) {
-    ensureFiveIncrement(input.balanceCents);
-    const { account, asset } = await saveAccountWithLogo(input);
+  async function hydrateForUser(user: AuthUser) {
+    const snapshot = await fetchBudgetSnapshot(user);
 
-    setAccounts((currentAccounts) => [...currentAccounts, account]);
-    setAssets((currentAssets) => ({
-      ...currentAssets,
-      [asset.id]: asset
-    }));
+    authUserRef.current = snapshot.user;
+    setAuthUser(snapshot.user);
+    setProfile(snapshot.profile);
+    setAccounts(snapshot.accounts);
+    setTransactions(snapshot.transactions);
+    setRecurringRules(snapshot.recurringRules);
+    setWishlistItems(snapshot.wishlistItems);
+    setAssetUrls(snapshot.assetUrls);
+    setBootStatus(snapshot.accounts.length === 0 ? 'onboarding' : 'ready');
   }
 
-  async function unlock(pin: string): Promise<boolean> {
-    if (!settings) {
-      return false;
-    }
-
-    const matches = await verifyPin(pin, settings.pinHash);
-
-    if (!matches) {
-      return false;
-    }
-
-    const data = await loadAllData();
-    setAccounts(data.accounts);
-    setExpenses(data.expenses);
-    setWishlistItems(data.wishlistItems);
-    setAssets(data.assets);
-    setBootStatus('ready');
-    return true;
-  }
-
-  function lock() {
-    if (settings?.isSeeded) {
-      setBootStatus('locked');
-    }
-  }
-
-  async function quickAdjustBalance(accountId: string, deltaCents: number) {
-    ensureFiveIncrement(deltaCents);
-    const updatedAccount = await accountsRepo.updateBalance(accountId, deltaCents);
-
-    setAccounts((currentAccounts) =>
-      currentAccounts.map((account) =>
-        account.id === updatedAccount.id ? updatedAccount : account
-      )
-    );
-  }
-
-  async function addExpense(input: AddExpenseInput) {
-    ensureFiveIncrement(input.amountCents);
-    const savedExpense = await expensesRepo.create(input);
-    const updatedAccount = await accountsRepo.updateBalance(input.accountId, -input.amountCents);
-
-    setExpenses((currentExpenses) =>
-      [savedExpense, ...currentExpenses].sort((left, right) => {
-        if (left.dateISO !== right.dateISO) {
-          return right.dateISO.localeCompare(left.dateISO);
-        }
-
-        return right.createdAt.localeCompare(left.createdAt);
-      })
-    );
-    setAccounts((currentAccounts) =>
-      currentAccounts.map((account) =>
-        account.id === updatedAccount.id ? updatedAccount : account
-      )
-    );
-  }
-
-  async function deleteExpense(expenseId: string) {
-    const expense = expenses.find((entry) => entry.id === expenseId);
-
-    if (!expense) {
+  async function refreshAppData() {
+    if (!authUserRef.current) {
       return;
     }
 
-    await expensesRepo.delete(expenseId);
-    const updatedAccount = await accountsRepo.updateBalance(expense.accountId, expense.amountCents);
+    await hydrateForUser(authUserRef.current);
+  }
 
-    setExpenses((currentExpenses) =>
-      currentExpenses.filter((entry) => entry.id !== expenseId)
+  async function runForUser(
+    action: (user: AuthUser) => Promise<void>,
+    refreshAfter = true
+  ) {
+    const user = authUserRef.current;
+
+    if (!user) {
+      throw new Error('Sign in to keep working with your budget.');
+    }
+
+    await action(user);
+
+    if (refreshAfter) {
+      await hydrateForUser(user);
+    }
+  }
+
+  useEffect(() => {
+    let isActive = true;
+    let removeFocusListener = () => undefined;
+    let unsubscribe = () => undefined;
+
+    async function bootstrap() {
+      try {
+        const currentUser = await getSessionUser();
+
+        if (!isActive) {
+          return;
+        }
+
+        authUserRef.current = currentUser;
+        setAuthUser(currentUser);
+
+        if (currentUser) {
+          await hydrateForUser(currentUser);
+        } else {
+          clearState();
+          setBootStatus('signed_out');
+        }
+
+        const authSubscription = subscribeToAuthChanges((nextUser) => {
+          authUserRef.current = nextUser;
+          setAuthUser(nextUser);
+
+          if (!nextUser) {
+            clearState();
+            setBootStatus('signed_out');
+            return;
+          }
+
+          void hydrateForUser(nextUser);
+        });
+
+        unsubscribe = () => {
+          authSubscription.data.subscription.unsubscribe();
+        };
+
+        const handleFocus = () => {
+          if (authUserRef.current) {
+            void hydrateForUser(authUserRef.current);
+          }
+        };
+
+        window.addEventListener('focus', handleFocus);
+        removeFocusListener = () => {
+          window.removeEventListener('focus', handleFocus);
+        };
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+
+        clearState();
+        authUserRef.current = null;
+        setAuthUser(null);
+        setConfigurationError(
+          error instanceof Error ? error.message : 'Unable to connect to Supabase.'
+        );
+        setBootStatus('signed_out');
+      }
+    }
+
+    void bootstrap();
+
+    return () => {
+      isActive = false;
+      unsubscribe();
+      removeFocusListener();
+    };
+  }, []);
+
+  async function handleSendMagicLink(email: string) {
+    await sendMagicLink(email);
+  }
+
+  async function handleSignOut() {
+    await signOutFromSupabase();
+    authUserRef.current = null;
+    setAuthUser(null);
+    clearState();
+    setBootStatus('signed_out');
+  }
+
+  async function handleCompleteOnboarding(input: CompleteOnboardingInput) {
+    await runForUser((user) => completeOnboardingInSupabase(user, input));
+  }
+
+  async function addAccount(input: AddAccountInput) {
+    await runForUser((user) => createAccount(user.id, input));
+  }
+
+  function getAccountRoundingMode(accountId: string): RoundingMode {
+    const account = accounts.find((entry) => entry.id === accountId);
+
+    return resolveAccountRoundingMode(
+      profile?.roundingDefaultMode ?? DEFAULT_ROUNDING_MODE,
+      account?.roundingOverrideMode
     );
-    setAccounts((currentAccounts) =>
-      currentAccounts.map((account) =>
-        account.id === updatedAccount.id ? updatedAccount : account
+  }
+
+  async function saveRoundingPreferences(input: SaveRoundingPreferencesInput) {
+    await runForUser((user) => saveRoundingPreferencesInSupabase(user.id, input));
+  }
+
+  async function addTransaction(input: AddTransactionInput) {
+    await runForUser((user) => createTransaction(input, user.id));
+  }
+
+  async function quickAdjustBalance(accountId: string, deltaCents: number) {
+    await runForUser((user) =>
+      createTransaction(
+        {
+          accountId,
+          type: 'adjustment',
+          name: deltaCents >= 0 ? 'Quick cash-in' : 'Quick cash-out',
+          amountCents: deltaCents,
+          date: todayInputValue()
+        },
+        user.id
       )
     );
+  }
+
+  async function addTransfer(input: AddTransferInput) {
+    await runForUser((user) => createTransfer(input, user.id));
+  }
+
+  async function deleteTransaction(transactionId: string) {
+    const transaction = transactions.find((entry) => entry.id === transactionId);
+
+    if (!transaction) {
+      return;
+    }
+
+    if (transaction.recurringRuleId) {
+      throw new Error('Delete or pause the recurring rule instead of removing this entry.');
+    }
+
+    const relatedIds = transaction.linkedTransferId
+      ? [transaction.id, transaction.linkedTransferId]
+      : [transaction.id];
+
+    await runForUser((user) => deleteTransactions(user.id, relatedIds));
+  }
+
+  async function addRecurringRule(input: AddRecurringRuleInput) {
+    await runForUser((user) => createRecurringRule(user.id, input));
+  }
+
+  async function toggleRecurringRule(ruleId: string, isActive: boolean) {
+    await runForUser((user) => updateRecurringRuleState(user.id, ruleId, isActive));
+  }
+
+  async function removeRecurringRule(ruleId: string) {
+    await runForUser((user) => deleteRecurringRule(user.id, ruleId));
   }
 
   async function addWishlistItem(input: AddWishlistInput) {
-    const resizedImage = await resizeImageToDataUrl(input.imageFile);
-    const savedAsset = await assetsRepo.save(resizedImage);
-    const wishlistItem = await wishlistRepo.create({
-      name: input.name,
-      priceCents: input.priceCents,
-      url: input.url,
-      imageAssetId: savedAsset.id
-    });
-
-    setAssets((currentAssets) => ({
-      ...currentAssets,
-      [savedAsset.id]: savedAsset
-    }));
-    setWishlistItems((currentWishlistItems) =>
-      [wishlistItem, ...currentWishlistItems].sort((left, right) =>
-        right.createdAt.localeCompare(left.createdAt)
-      )
-    );
+    await runForUser((user) => createWishlistItem(user.id, input));
   }
 
-  async function deleteWishlistItem(wishlistItemId: string) {
+  async function removeWishlistItem(wishlistItemId: string) {
     const wishlistItem = wishlistItems.find((entry) => entry.id === wishlistItemId);
 
     if (!wishlistItem) {
       return;
     }
 
-    await wishlistRepo.delete(wishlistItemId);
-    await assetsRepo.delete(wishlistItem.imageAssetId);
-
-    setWishlistItems((currentWishlistItems) =>
-      currentWishlistItems.filter((entry) => entry.id !== wishlistItemId)
+    await runForUser((user) =>
+      deleteWishlistItem(user.id, wishlistItemId, wishlistItem.imagePath)
     );
-    setAssets((currentAssets) => {
-      const nextAssets = { ...currentAssets };
-      delete nextAssets[wishlistItem.imageAssetId];
-      return nextAssets;
-    });
-  }
-
-  async function resetApp() {
-    await clearAllLocalData();
-    setSettings(null);
-    setAccounts([]);
-    setExpenses([]);
-    setWishlistItems([]);
-    setAssets({});
-    setBootStatus('setup');
-    window.location.hash = '#/';
   }
 
   return (
     <BudgetAppContext.Provider
       value={{
         bootStatus,
-        settings,
+        authUser,
+        profile,
+        roundingDefaultMode: profile?.roundingDefaultMode ?? DEFAULT_ROUNDING_MODE,
+        configurationError,
         accounts,
-        expenses,
+        transactions,
+        recurringRules,
         wishlistItems,
-        assets,
-        completeSetup,
+        assetUrls,
+        monthlySummary: accounts.length || transactions.length ? monthlySummary : createEmptySummary(),
+        sendMagicLink: handleSendMagicLink,
+        signOut: handleSignOut,
+        refreshAppData,
+        completeOnboarding: handleCompleteOnboarding,
         addAccount,
-        unlock,
-        lock,
+        getAccountRoundingMode,
+        saveRoundingPreferences,
+        addTransaction,
         quickAdjustBalance,
-        addExpense,
-        deleteExpense,
+        addTransfer,
+        deleteTransaction,
+        addRecurringRule,
+        toggleRecurringRule,
+        removeRecurringRule,
         addWishlistItem,
-        deleteWishlistItem,
-        resetApp
+        removeWishlistItem
       }}
     >
       {children}

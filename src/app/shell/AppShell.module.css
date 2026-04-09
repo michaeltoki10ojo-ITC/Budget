@@ -27,6 +27,12 @@
   line-height: 1;
 }
 
+.userEmail {
+  margin: 0.45rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+}
+
 .lockButton {
   align-self: center;
   padding: 0.85rem 1.15rem;
@@ -45,7 +51,7 @@
   position: sticky;
   bottom: 0;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.65rem;
   padding: 0.85rem;
   margin-top: 1rem;
@@ -75,6 +81,6 @@
   }
 
   .bottomNav {
-    max-width: 22rem;
+    max-width: 40rem;
   }
 }

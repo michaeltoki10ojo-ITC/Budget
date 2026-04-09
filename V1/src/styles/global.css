@@ -1,0 +1,120 @@
+:root {
+  color-scheme: dark;
+  font-family: 'Avenir Next', 'Segoe UI', sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #eef4ff;
+  background:
+    radial-gradient(circle at top, rgba(96, 165, 250, 0.18), transparent 34%),
+    radial-gradient(circle at bottom left, rgba(45, 212, 191, 0.14), transparent 30%),
+    linear-gradient(180deg, #04070f 0%, #09101c 48%, #0f172a 100%);
+  --app-max-width: 820px;
+  --surface: rgba(15, 23, 42, 0.82);
+  --surface-strong: rgba(7, 12, 24, 0.92);
+  --surface-muted: rgba(15, 23, 42, 0.64);
+  --surface-dark: #131d32;
+  --surface-dark-soft: #1d2942;
+  --surface-accent: #7dd3fc;
+  --surface-danger: #f87171;
+  --text-primary: #eef4ff;
+  --text-secondary: #94a3b8;
+  --text-inverse: #f8fbff;
+  --cta-fill: linear-gradient(135deg, #38bdf8 0%, #2563eb 100%);
+  --cta-text: #f8fbff;
+  --cta-shadow: 0 14px 28px rgba(37, 99, 235, 0.34);
+  --border-soft: rgba(148, 163, 184, 0.18);
+  --shadow-soft: 0 24px 70px rgba(0, 0, 0, 0.44);
+  --shadow-card: 0 18px 42px rgba(0, 0, 0, 0.3);
+  --radius-lg: 28px;
+  --radius-md: 20px;
+  --radius-sm: 14px;
+  --safe-top: max(env(safe-area-inset-top), 1rem);
+  --safe-bottom: max(env(safe-area-inset-bottom), 1rem);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: transparent;
+}
+
+body,
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+button {
+  cursor: pointer;
+  border: 0;
+}
+
+button:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+input,
+textarea {
+  width: 100%;
+  border: 1px solid var(--border-soft);
+  border-radius: 16px;
+  padding: 0.9rem 1rem;
+  background: rgba(6, 10, 20, 0.94);
+  color: var(--text-primary);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+input:focus,
+textarea:focus {
+  outline: 2px solid rgba(255, 183, 3, 0.7);
+  outline-offset: 2px;
+}
+
+label {
+  display: grid;
+  gap: 0.45rem;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.24);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --safe-top: max(env(safe-area-inset-top), 1.5rem);
+    --safe-bottom: max(env(safe-area-inset-bottom), 1.5rem);
+  }
+}

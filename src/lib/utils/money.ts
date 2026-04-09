@@ -1,5 +1,14 @@
-export const FIVE_DOLLAR_INCREMENT_CENTS = 500;
-export type FiveIncrementRoundMode = 'down' | 'up';
+import type { AccountRoundingMode, RoundingMode } from '../types';
+
+export const DEFAULT_ROUNDING_MODE: RoundingMode = 'nearest_5';
+
+export type RoundingDirection = 'down' | 'up';
+
+export const ROUNDING_MODE_OPTIONS: Array<{ value: RoundingMode; label: string }> = [
+  { value: 'exact', label: 'Exact' },
+  { value: 'nearest_5', label: 'Nearest $5' },
+  { value: 'nearest_10', label: 'Nearest $10' }
+];
 
 const usdFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -24,18 +33,71 @@ export function parseCurrencyInputToCents(value: string): number | null {
   return Math.round(numericValue * 100);
 }
 
-export function isFiveIncrement(cents: number): boolean {
-  return cents % FIVE_DOLLAR_INCREMENT_CENTS === 0;
+export function getIncrementForMode(mode: RoundingMode): number {
+  switch (mode) {
+    case 'exact':
+      return 1;
+    case 'nearest_5':
+      return 500;
+    case 'nearest_10':
+      return 1000;
+  }
 }
 
-export function roundToFiveIncrement(
+export function getRoundingModeLabel(mode: RoundingMode): string {
+  return ROUNDING_MODE_OPTIONS.find((option) => option.value === mode)?.label ?? 'Nearest $5';
+}
+
+export function buildAccountRoundingOptions() {
+  return ROUNDING_MODE_OPTIONS;
+}
+
+export function getInputFractionDigits(mode: RoundingMode): number {
+  return mode === 'exact' ? 2 : 0;
+}
+
+export function resolveAccountRoundingMode(
+  profileDefaultMode: RoundingMode,
+  accountOverrideMode: AccountRoundingMode | 'inherit_default' | null | undefined
+): RoundingMode {
+  return normalizeAccountRoundingMode(accountOverrideMode, profileDefaultMode);
+}
+
+export function normalizeAccountRoundingMode(
+  value: AccountRoundingMode | 'inherit_default' | string | null | undefined,
+  fallback: RoundingMode = DEFAULT_ROUNDING_MODE
+): AccountRoundingMode {
+  if (value === 'exact' || value === 'nearest_5' || value === 'nearest_10') {
+    return value;
+  }
+
+  return fallback;
+}
+
+export function describeRoundingRule(
+  mode: RoundingMode,
+  direction: RoundingDirection
+): string {
+  if (mode === 'exact') {
+    return 'keep exact amounts.';
+  }
+
+  return `${direction === 'down' ? 'round down' : 'round up'} to the nearest ${getRoundingModeLabel(mode).replace('Nearest ', '')}.`;
+}
+
+export function roundAmountCents(
   cents: number,
-  mode: FiveIncrementRoundMode
+  mode: RoundingMode,
+  direction: RoundingDirection
 ): number {
-  const direction = mode === 'down' ? Math.floor : Math.ceil;
+  if (mode === 'exact') {
+    return cents;
+  }
+
+  const increment = getIncrementForMode(mode);
   const absoluteCents = Math.abs(cents);
-  const roundedCents =
-    direction(absoluteCents / FIVE_DOLLAR_INCREMENT_CENTS) * FIVE_DOLLAR_INCREMENT_CENTS;
+  const round = direction === 'down' ? Math.floor : Math.ceil;
+  const roundedCents = round(absoluteCents / increment) * increment;
 
   if (roundedCents === 0) {
     return 0;
@@ -44,9 +106,10 @@ export function roundToFiveIncrement(
   return cents < 0 ? -roundedCents : roundedCents;
 }
 
-export function roundCurrencyInputToFiveIncrement(
+export function roundCurrencyInput(
   value: string,
-  mode: FiveIncrementRoundMode
+  mode: RoundingMode,
+  direction: RoundingDirection
 ): { originalCents: number; roundedCents: number; didRound: boolean } | null {
   const originalCents = parseCurrencyInputToCents(value);
 
@@ -54,7 +117,7 @@ export function roundCurrencyInputToFiveIncrement(
     return null;
   }
 
-  const roundedCents = roundToFiveIncrement(originalCents, mode);
+  const roundedCents = roundAmountCents(originalCents, mode, direction);
 
   return {
     originalCents,
@@ -63,10 +126,8 @@ export function roundCurrencyInputToFiveIncrement(
   };
 }
 
-export function ensureFiveIncrement(cents: number): void {
-  if (!isFiveIncrement(cents)) {
-    throw new Error('Amount must be in $5 increments.');
-  }
+export function getSignedInputDirection(value: string): RoundingDirection {
+  return value.trim().startsWith('-') ? 'up' : 'down';
 }
 
 export function sumCents(values: number[]): number {

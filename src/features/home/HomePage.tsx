@@ -2,16 +2,22 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useBudgetApp } from '../../app/state/BudgetAppContext';
-import { formatCurrency, sumCents } from '../../lib/utils/money';
+import { formatCurrency } from '../../lib/utils/money';
 import type { AddAccountInput } from '../../lib/types';
 import { AddAccountSheet } from './AddAccountSheet';
 import styles from './HomePage.module.css';
 
 export function HomePage() {
-  const { accounts, assets, addAccount } = useBudgetApp();
+  const {
+    accounts,
+    assetUrls,
+    addAccount,
+    monthlySummary,
+    transactions
+  } = useBudgetApp();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const totalBalance = sumCents(accounts.map((account) => account.balanceCents));
+  const recentTransactions = transactions.slice(0, 4);
 
   async function handleAddAccount(input: AddAccountInput) {
     setIsSubmitting(true);
@@ -30,7 +36,9 @@ export function HomePage() {
           <div className={styles.summaryTopRow}>
             <div>
               <p className={styles.summaryLabel}>Total tracked balance</p>
-              <h2 className={styles.summaryValue}>{formatCurrency(totalBalance)}</h2>
+              <h2 className={styles.summaryValue}>
+                {formatCurrency(monthlySummary.accountTotalCents)}
+              </h2>
             </div>
             <button
               type="button"
@@ -41,14 +49,30 @@ export function HomePage() {
             </button>
           </div>
           <p className={styles.summaryCaption}>
-            Tap an account card to view expenses and make quick adjustments. You can now keep
-            adding accounts whenever you need them.
+            {monthlySummary.monthLabel} net: {formatCurrency(monthlySummary.netCents)} with{' '}
+            {formatCurrency(monthlySummary.incomeCents)} in,{' '}
+            {formatCurrency(monthlySummary.expenseCents)} out, and{' '}
+            {formatCurrency(monthlySummary.adjustmentCents)} in adjustments.
           </p>
+          <div className={styles.metricGrid}>
+            <article className={styles.metricCard}>
+              <span>Income</span>
+              <strong>{formatCurrency(monthlySummary.incomeCents)}</strong>
+            </article>
+            <article className={styles.metricCard}>
+              <span>Expenses</span>
+              <strong>{formatCurrency(monthlySummary.expenseCents)}</strong>
+            </article>
+            <article className={styles.metricCard}>
+              <span>Adjustments</span>
+              <strong>{formatCurrency(monthlySummary.adjustmentCents)}</strong>
+            </article>
+          </div>
         </section>
 
         <section className={styles.accountList}>
           {accounts.map((account) => {
-            const logo = assets[account.logoAssetId];
+            const logo = account.logoPath ? assetUrls[account.logoPath] : undefined;
 
             return (
               <Link key={account.id} to={`/account/${account.id}`} className={styles.linkCard}>
@@ -59,11 +83,7 @@ export function HomePage() {
                 >
                   <motion.div layoutId={`account-logo-${account.id}`} className={styles.logoShell}>
                     {logo ? (
-                      <img
-                        src={logo.dataUrl}
-                        alt={`${account.name} logo`}
-                        className={styles.logoImage}
-                      />
+                      <img src={logo} alt={`${account.name} logo`} className={styles.logoImage} />
                     ) : (
                       <span>{account.name.slice(0, 1)}</span>
                     )}
@@ -71,7 +91,9 @@ export function HomePage() {
 
                   <div className={styles.accountMeta}>
                     <p className={styles.accountName}>{account.name}</p>
-                    <p className={styles.accountHint}>Open account details</p>
+                    <p className={styles.accountHint}>
+                      Opening balance {formatCurrency(account.openingBalanceCents)}
+                    </p>
                   </div>
 
                   <motion.p
@@ -84,6 +106,43 @@ export function HomePage() {
               </Link>
             );
           })}
+        </section>
+
+        <section className={styles.activityCard}>
+          <div className={styles.activityHeader}>
+            <div>
+              <p className={styles.summaryLabel}>Recent activity</p>
+              <h3>Latest ledger entries</h3>
+            </div>
+            <span>{transactions.length}</span>
+          </div>
+
+          {recentTransactions.length === 0 ? (
+            <p className={styles.emptyText}>Add your first transaction from any account card.</p>
+          ) : (
+            <div className={styles.activityList}>
+              {recentTransactions.map((transaction) => {
+                const account = accounts.find((entry) => entry.id === transaction.accountId);
+
+                return (
+                  <article key={transaction.id} className={styles.activityRow}>
+                    <div>
+                      <p className={styles.activityName}>{transaction.name}</p>
+                      <p className={styles.activityMeta}>
+                        {account?.name ?? 'Account'} • {transaction.date}
+                      </p>
+                    </div>
+                    <strong className={styles.activityAmount}>
+                      {transaction.type === 'expense' || transaction.type === 'transfer_out'
+                        ? '-'
+                        : '+'}
+                      {formatCurrency(Math.abs(transaction.amountCents))}
+                    </strong>
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </section>
       </div>
 

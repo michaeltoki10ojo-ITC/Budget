@@ -1,0 +1,135 @@
+.page {
+  display: grid;
+  gap: 1rem;
+}
+
+.heroCard,
+.settingsCard {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 28px;
+  box-shadow: var(--shadow-card);
+}
+
+.heroCard {
+  padding: 1.2rem;
+}
+
+.heroCard h2,
+.settingsCard h3,
+.accountCard h4 {
+  margin: 0;
+}
+
+.heroCard p:last-child,
+.accountCard p,
+.warningCard p,
+.footerNote {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.eyebrow {
+  margin: 0 0 0.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.settingsCard {
+  padding: 1.2rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.saveButton {
+  min-height: 3rem;
+  padding: 0.9rem 1.15rem;
+  border-radius: 18px;
+  background: var(--cta-fill);
+  color: var(--cta-text);
+  box-shadow: var(--cta-shadow);
+  font-weight: 700;
+}
+
+.helperText {
+  color: var(--text-secondary);
+}
+
+.roundedNote {
+  color: var(--surface-accent);
+  font-weight: 600;
+}
+
+.accountList {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.accountCard {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+  border-radius: 22px;
+  background: rgba(7, 12, 24, 0.8);
+  border: 1px solid var(--border-soft);
+}
+
+.accountHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.accountModeTag {
+  padding: 0.5rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(125, 211, 252, 0.14);
+  color: var(--text-primary);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.warningCard,
+.error,
+.success {
+  border-radius: 18px;
+  padding: 0.95rem 1rem;
+}
+
+.warningCard {
+  background: rgba(250, 204, 21, 0.12);
+  border: 1px solid rgba(250, 204, 21, 0.22);
+}
+
+.warningCard strong {
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.error {
+  margin: 0;
+  background: rgba(248, 113, 113, 0.12);
+  color: #fca5a5;
+  font-weight: 600;
+}
+
+.success {
+  margin: 0;
+  background: rgba(45, 212, 191, 0.12);
+  color: #99f6e4;
+  font-weight: 600;
+}
+
+.footerNote {
+  font-size: 0.92rem;
+}

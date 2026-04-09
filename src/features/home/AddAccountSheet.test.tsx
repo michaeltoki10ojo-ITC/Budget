@@ -17,7 +17,7 @@ vi.mock('../setup/logoOptions', async () => {
 });
 
 describe('AddAccountSheet', () => {
-  it('rounds new account balances down to the nearest five dollars', async () => {
+  it('rounds new account balances down to the nearest five dollars by default', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
 
@@ -40,7 +40,7 @@ describe('AddAccountSheet', () => {
     expect(screen.getByText('Rounded to $20.00.')).toBeInTheDocument();
   });
 
-  it('submits the preset logo label as the account name', async () => {
+  it('submits the selected preset label as the starting account name', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn().mockResolvedValue(undefined);
 
@@ -53,14 +53,39 @@ describe('AddAccountSheet', () => {
       />
     );
 
-    await user.click(screen.getByRole('button', { name: /venmo/i }));
+    await user.selectOptions(screen.getByLabelText(/logo or account type/i), 'venmo');
     await user.click(screen.getByRole('button', { name: /add account/i }));
 
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
-        name: 'Venmo'
+        name: 'Venmo',
+        roundingOverrideMode: 'nearest_5'
       })
     );
+  });
+
+  it('supports exact balances for accounts with a custom override', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+
+    render(
+      <AddAccountSheet
+        isOpen
+        isSubmitting={false}
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    await user.selectOptions(screen.getByLabelText(/account rounding/i), 'exact');
+
+    const balanceInput = screen.getByLabelText(/starting balance/i);
+    await user.clear(balanceInput);
+    await user.type(balanceInput, '23.45');
+    await user.tab();
+
+    expect(balanceInput).toHaveValue(23.45);
+    expect(screen.getByText(/starting balances keep exact amounts/i)).toBeInTheDocument();
   });
 
   it('lets the user choose the name after uploading a custom image', async () => {
@@ -76,7 +101,7 @@ describe('AddAccountSheet', () => {
       />
     );
 
-    await user.click(screen.getByRole('button', { name: /payPal/i }));
+    await user.selectOptions(screen.getByLabelText(/logo or account type/i), 'paypal');
 
     const uploadInput = screen.getByLabelText(/or upload your own/i);
     const customImage = new File(['custom-image'], 'wallet.png', { type: 'image/png' });
@@ -85,9 +110,7 @@ describe('AddAccountSheet', () => {
 
     const nameInput = screen.getByLabelText(/account name/i);
 
-    expect(nameInput).toHaveValue('');
-    expect(nameInput).not.toHaveAttribute('readonly');
-
+    await user.clear(nameInput);
     await user.type(nameInput, 'Travel wallet');
     await user.click(screen.getByRole('button', { name: /add account/i }));
 

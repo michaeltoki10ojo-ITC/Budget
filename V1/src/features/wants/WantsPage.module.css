@@ -1,0 +1,149 @@
+.page {
+  position: relative;
+  display: grid;
+  gap: 1rem;
+  padding-bottom: 4rem;
+}
+
+.totalCard {
+  padding: 1.25rem;
+  border-radius: 28px;
+  background:
+    linear-gradient(135deg, rgba(29, 45, 68, 0.95), rgba(20, 33, 61, 0.95)),
+    var(--surface-dark);
+  color: var(--text-inverse);
+  box-shadow: var(--shadow-card);
+}
+
+.totalLabel {
+  margin: 0 0 0.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.76rem;
+  color: rgba(255, 253, 247, 0.76);
+}
+
+.totalValue {
+  margin: 0;
+  font-size: clamp(2.2rem, 10vw, 3.6rem);
+  line-height: 0.94;
+}
+
+.totalCaption {
+  margin: 0.75rem 0 0;
+  color: rgba(255, 253, 247, 0.8);
+}
+
+.wantList {
+  display: grid;
+  gap: 1rem;
+}
+
+.wantCard,
+.emptyState {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 28px;
+  background: var(--surface-strong);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-card);
+}
+
+.emptyState h3,
+.emptyState p,
+.wantMeta h3,
+.wantMeta p {
+  margin: 0;
+}
+
+.imageFrame {
+  min-height: 12rem;
+  border-radius: 22px;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(125, 211, 252, 0.18), rgba(56, 189, 248, 0.08));
+  display: grid;
+  place-items: center;
+}
+
+.imageFrame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.imageFrame span {
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.wantMeta {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.wantMeta h3 {
+  font-size: 1.15rem;
+}
+
+.wantMeta p {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.linkButton,
+.deleteButton,
+.fab {
+  font-weight: 700;
+}
+
+.linkButton,
+.deleteButton {
+  min-height: 3rem;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 18px;
+  padding: 0.8rem 1rem;
+}
+
+.linkButton {
+  background: var(--surface-dark);
+  color: var(--text-inverse);
+}
+
+.deleteButton {
+  background: rgba(248, 113, 113, 0.12);
+  color: #fca5a5;
+}
+
+.fab {
+  position: fixed;
+  right: max(1.25rem, calc((100vw - var(--app-max-width)) / 2 + 1.25rem));
+  bottom: calc(var(--safe-bottom) + 6rem);
+  width: 4rem;
+  height: 4rem;
+  border-radius: 999px;
+  font-size: 2rem;
+  line-height: 1;
+  background: var(--surface-accent);
+  color: #05111e;
+  box-shadow: 0 18px 30px rgba(255, 183, 3, 0.32);
+}
+
+@media (min-width: 768px) {
+  .wantCard {
+    grid-template-columns: 16rem 1fr;
+    align-items: stretch;
+  }
+
+  .imageFrame {
+    min-height: 100%;
+  }
+}

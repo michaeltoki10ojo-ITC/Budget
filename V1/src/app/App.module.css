@@ -1,0 +1,39 @@
+.frame,
+.splash {
+  min-height: 100dvh;
+}
+
+.frame {
+  width: min(100%, var(--app-max-width));
+  margin: 0 auto;
+}
+
+.splash {
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+}
+
+.splashCard {
+  width: min(100%, 28rem);
+  background: var(--surface-strong);
+  border: 1px solid var(--border-soft);
+  border-radius: 32px;
+  box-shadow: var(--shadow-soft);
+  padding: 2rem;
+  backdrop-filter: blur(18px);
+}
+
+.splashEyebrow {
+  margin: 0 0 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.splashCard h1 {
+  margin: 0;
+  font-size: clamp(1.8rem, 6vw, 2.8rem);
+  line-height: 1.05;
+}

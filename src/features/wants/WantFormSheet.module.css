@@ -59,6 +59,21 @@
   gap: 0.85rem;
 }
 
+.helperText {
+  color: var(--text-secondary);
+}
+
+.formHint {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.roundedNote {
+  margin: 0;
+  color: var(--surface-accent);
+  font-weight: 600;
+}
+
 .previewCard {
   min-height: 10rem;
   border-radius: 24px;
